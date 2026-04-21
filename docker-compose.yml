@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: inventory_app
+    volumes:
+      - .:/var/www
+    ports:
+      - "8000:80"
+    networks:
+      - h3_net
+
+networks:
+  h3_net:
+    external: true
