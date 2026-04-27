@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import axios from "axios";
+import { api } from "./api";
 
 export default function ProviderDetail() {
   const { id } = useParams();
 
   const [provider, setProvider] = useState(null);
   const [products, setProducts] = useState([]);
-
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -15,13 +14,11 @@ export default function ProviderDetail() {
   const [showTop, setShowTop] = useState(false);
 
   // =========================
-  // RESET
+  // INIT
   // =========================
   useEffect(() => {
     setProducts([]);
-    setProvider(null);
     setPage(1);
-    setTotal(0);
 
     loadProvider();
     loadProducts(1);
@@ -32,8 +29,6 @@ export default function ProviderDetail() {
   // =========================
   useEffect(() => {
     const handleScroll = () => {
-
-      // 🔥 INFINITE SCROLL
       if (
         window.innerHeight + window.scrollY >=
         document.body.offsetHeight - 200
@@ -43,13 +38,11 @@ export default function ProviderDetail() {
         }
       }
 
-      // 🔝 BACK TO TOP
       setShowTop(window.scrollY > 400);
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-
   }, [products, total, page, loading]);
 
   // =========================
@@ -57,9 +50,7 @@ export default function ProviderDetail() {
   // =========================
   const loadProvider = async () => {
     try {
-      const res = await axios.get(
-        `http://localhost:8000/api/providers/${id}`
-      );
+      const res = await api.get(`providers/${id}`);
       setProvider(res.data);
     } catch (e) {
       console.error(e);
@@ -67,7 +58,7 @@ export default function ProviderDetail() {
   };
 
   // =========================
-  // LOAD PRODUCTS (PAGINADO)
+  // LOAD PRODUCTS
   // =========================
   const loadProducts = async (pageToLoad) => {
     if (loading) return;
@@ -75,8 +66,8 @@ export default function ProviderDetail() {
     setLoading(true);
 
     try {
-      const res = await axios.get(
-        `http://localhost:8000/api/products?provider=${id}&page=${pageToLoad}`
+      const res = await api.get(
+        `products?provider=${id}&page=${pageToLoad}`
       );
 
       console.log("RESPONSE:", res.data);
@@ -86,7 +77,6 @@ export default function ProviderDetail() {
 
       setTotal(totalItems);
 
-      // evitar duplicados
       setProducts(prev => {
         const ids = new Set(prev.map(p => p.id));
         const filtered = newProducts.filter(p => !ids.has(p.id));
@@ -103,10 +93,8 @@ export default function ProviderDetail() {
   };
 
   // =========================
-  // KPIs CORRECTOS
+  // KPIs
   // =========================
-  const totalProducts = total; // 🔥 ESTE ES EL BUENO
-
   const lowStock = products.filter(
     (p) => p.stock > 0 && p.stock < p.minStock
   ).length;
@@ -115,89 +103,107 @@ export default function ProviderDetail() {
     (p) => p.stock === 0
   ).length;
 
+  // =========================
+  // UTIL
+  // =========================
+  const copyEmail = () => {
+    if (provider?.email) {
+      navigator.clipboard.writeText(provider.email);
+      alert("Email copiado");
+    }
+  };
+
   const scrollTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  if (!provider) return <div className="p-6">Cargando...</div>;
+  if (!provider) return <div>Cargando...</div>;
 
+  // =========================
+  // RENDER
+  // =========================
   return (
     <div className="min-h-screen bg-gray-100 p-6">
 
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-5xl mx-auto">
 
         {/* HEADER */}
-        <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">{provider.name}</h1>
+        <Link to="/" className="text-blue-600 underline mb-4 inline-block">
+          ← Volver
+        </Link>
 
-          <Link to="/" className="text-blue-600 underline">
-            ← Volver
-          </Link>
-        </div>
+        {/* CARD PROVIDER */}
+        <div className="bg-white p-6 rounded shadow mb-6">
 
-        {/* INFO */}
-        <div className="bg-white p-4 rounded shadow mb-6">
-          <p>Email: {provider.email || "-"}</p>
-          <p>Teléfono: {provider.phone || "-"}</p>
+          <h2 className="text-2xl font-bold mb-2">
+            {provider.name}
+          </h2>
+
+          <div className="text-gray-600 space-y-1">
+            <div>Email: {provider.email || "-"}</div>
+            <div>Teléfono: {provider.phone || "-"}</div>
+            <div>Contacto: {provider.contactPerson || "-"}</div>
+            <div>Dirección: {provider.address || "-"}</div>
+          </div>
+
+          {/* ACTIONS */}
+          <div className="mt-4 flex gap-3">
+
+            <button
+              onClick={copyEmail}
+              className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+            >
+              Copiar email
+            </button>
+
+            <a
+              href={`mailto:${provider.email}`}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Enviar email
+            </a>
+
+          </div>
+
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="flex gap-4 mb-6">
 
-          <div className="bg-white p-4 rounded shadow text-center">
-            <p className="text-gray-500">Total productos</p>
-            <p className="text-2xl font-bold">{totalProducts}</p>
+          <div className="bg-white p-4 rounded shadow flex-1 text-center">
+            <p>Total productos</p>
+            <p className="text-xl font-bold">{total}</p>
           </div>
 
-          <div className="bg-yellow-100 p-4 rounded shadow text-center">
+          <div className="bg-yellow-100 p-4 rounded shadow flex-1 text-center">
             <p>Bajo stock</p>
-            <p className="text-2xl font-bold">{lowStock}</p>
+            <p className="text-xl font-bold">{lowStock}</p>
           </div>
 
-          <div className="bg-red-100 p-4 rounded shadow text-center">
+          <div className="bg-red-200 p-4 rounded shadow flex-1 text-center">
             <p>Sin stock</p>
-            <p className="text-2xl font-bold">{noStock}</p>
+            <p className="text-xl font-bold">{noStock}</p>
           </div>
 
         </div>
 
-        {/* TABLA */}
-        <div className="bg-white rounded shadow overflow-hidden">
+        {/* LISTA */}
+        <div className="bg-white rounded shadow">
 
-          <table className="w-full text-sm">
-
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left p-4">Producto</th>
-                <th className="text-center">Stock</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {products.map((p) => (
-                <tr key={p.id} className="border-t hover:bg-gray-50">
-
-                  <td className="p-4">
-                    <Link
-                      to={`/products/${p.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {p.name}
-                    </Link>
-                  </td>
-
-                  <td className="text-center font-semibold">
-                    {p.stock}
-                  </td>
-
-                </tr>
-              ))}
-            </tbody>
-
-          </table>
+          {products.map(p => (
+            <div
+              key={p.id}
+              className="flex justify-between p-4 border-b"
+            >
+              <div>{p.name}</div>
+              <div className="font-semibold">{p.stock}</div>
+            </div>
+          ))}
 
           {loading && (
-            <div className="p-4 text-center">Cargando...</div>
+            <div className="p-4 text-center text-gray-500">
+              Cargando...
+            </div>
           )}
 
         </div>
@@ -208,7 +214,7 @@ export default function ProviderDetail() {
       {showTop && (
         <button
           onClick={scrollTop}
-          className="fixed bottom-6 right-6 bg-blue-600 text-white w-10 h-10 rounded-full shadow-lg"
+          className="fixed bottom-6 right-6 bg-blue-600 text-white w-10 h-10 rounded-full shadow"
         >
           ↑
         </button>
