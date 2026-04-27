@@ -4,43 +4,44 @@ namespace App\Entity;
 
 use App\Repository\ProviderRepository;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Metadata\ApiResource;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ProviderRepository::class)]
-#[ORM\Table(name: 'provider')]
+#[ApiResource(
+    normalizationContext: ['groups' => ['provider:read']]
+)]
 class Provider
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['provider:read', 'product:read'])]
     private ?int $id = null;
 
-    // 🔹 Nombre del proveedor (obligatorio)
-    #[ORM\Column(length: 255, unique: true)]
-    private string $name;
+    #[ORM\Column(length: 255)]
+    #[Groups(['provider:read', 'product:read'])]
+    private ?string $name = null;
 
-    // 🔹 Email de contacto
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['provider:read'])]
     private ?string $email = null;
 
-    // 🔹 Teléfono
     #[ORM\Column(length: 50, nullable: true)]
+    #[Groups(['provider:read'])]
     private ?string $phone = null;
 
-    // 🔹 Persona de contacto
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['provider:read'])]
     private ?string $contactPerson = null;
 
-    // 🔹 Dirección
     #[ORM\Column(type: 'text', nullable: true)]
+    #[Groups(['provider:read'])]
     private ?string $address = null;
 
-    // 🔹 Fecha creación
     #[ORM\Column(type: 'datetime_immutable')]
+    #[Groups(['provider:read'])]
     private \DateTimeImmutable $createdAt;
-
-    // 🔹 Fecha actualización
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $updatedAt = null;
 
     public function __construct()
     {
@@ -48,22 +49,19 @@ class Provider
     }
 
     // ======================
-    // GETTERS & SETTERS
-    // ======================
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getName(): string
+    public function getName(): ?string
     {
         return $this->name;
     }
 
     public function setName(string $name): self
     {
-        // 🔥 Normalización recomendada
         $this->name = strtoupper(trim($name));
         return $this;
     }
@@ -115,16 +113,5 @@ class Provider
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updatedAt;
-    }
-
-    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): self
-    {
-        $this->updatedAt = $updatedAt;
-        return $this;
     }
 }

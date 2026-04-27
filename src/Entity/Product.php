@@ -8,6 +8,10 @@ use App\Repository\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 class Product
@@ -15,24 +19,28 @@ class Product
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['product:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
     private ?string $sku = null;
 
+    #[Groups(['product:read'])]
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
     #[ORM\Column(length: 255)]
     private ?string $brand = null;
 
+    #[Groups(['product:read'])]
     #[ORM\Column]
     private ?int $minstock = null;
 
+    #[Groups(['product:read'])]
     #[ORM\ManyToOne(targetEntity: Provider::class)]
-    #[ORM\JoinColumn(nullable: false)]
     private ?Provider $provider = null;
 
+    #[Groups(['product:read'])]
     #[ORM\OneToMany(mappedBy: 'product', targetEntity: InventoryBatch::class, orphanRemoval: true)]
     private Collection $batches;
 
@@ -40,112 +48,33 @@ class Product
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Category $category = null;
 
+    #[ORM\OneToMany(mappedBy: 'product', targetEntity: StockMovement::class)]
+    private Collection $movements;
+
     public function __construct()
     {
         $this->batches = new ArrayCollection();
+        $this->movements = new ArrayCollection();
     }
 
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
+    public function getId(): ?int { return $this->id; }
+    public function getSku(): ?string { return $this->sku; }
+    public function setSku(string $sku): static { $this->sku = $sku; return $this; }
 
-    public function getSku(): ?string
-    {
-        return $this->sku;
-    }
+    public function getName() { return $this->name; }
+    public function setName($name) { $this->name = $name; return $this; }
 
-    public function setSku(string $sku): static
-    {
-        $this->sku = $sku;
+    public function getBrand() { return $this->brand; }
+    public function setBrand($brand) { $this->brand = $brand; return $this; }
 
-        return $this;
-    }
+    #[Groups(['product:read'])]
+    public function getMinStock(): ?int { return $this->minstock; }
+    public function setMinstock($minstock) { $this->minstock = $minstock; return $this; }
 
-    /**
-     * Get the value of name
-     */
-    public function getName()
-    {
-        return $this->name;
-    }
+    public function getProvider() { return $this->provider; }
+    public function setProvider($provider) { $this->provider = $provider; return $this; }
 
-    /**
-     * Set the value of name
-     *
-     * @return  self
-     */
-    public function setName($name)
-    {
-        $this->name = $name;
-
-        return $this;
-    }
-
-    /**
-     * Get the value of brand
-     */
-    public function getBrand()
-    {
-        return $this->brand;
-    }
-
-    /**
-     * Set the value of brand
-     *
-     * @return  self
-     */
-    public function setBrand($brand)
-    {
-        $this->brand = $brand;
-
-        return $this;
-    }
-
-    /**
-     * Get the value of minstock
-     */
-    public function getMinstock()
-    {
-        return $this->minstock;
-    }
-
-    /**
-     * Set the value of minstock
-     *
-     * @return  self
-     */
-    public function setMinstock($minstock)
-    {
-        $this->minstock = $minstock;
-
-        return $this;
-    }
-
-    /**
-     * Get the value of provider
-     */
-    public function getProvider()
-    {
-        return $this->provider;
-    }
-
-    /**
-     * Set the value of provider
-     *
-     * @return  self
-     */
-    public function setProvider($provider)
-    {
-        $this->provider = $provider;
-
-        return $this;
-    }
-
-    public function getBatches(): Collection
-    {
-        return $this->batches;
-    }
+    public function getBatches(): Collection { return $this->batches; }
 
     public function addBatch(InventoryBatch $batch): self
     {
@@ -165,14 +94,17 @@ class Product
         }
         return $this;
     }
-    public function getCategory(): ?Category
+
+    public function getCategory(): ?Category { return $this->category; }
+    public function setCategory(?Category $category): self { $this->category = $category; return $this; }
+
+    #[Groups(['product:read'])]
+    public function getStock(): int
     {
-        return $this->category;
+        return array_sum(
+            array_map(fn($b) => $b->getQuantity(), $this->batches->toArray())
+        );
     }
 
-    public function setCategory(?Category $category): self
-    {
-        $this->category = $category;
-        return $this;
-    }
+    public function getMovements(): Collection { return $this->movements; }
 }

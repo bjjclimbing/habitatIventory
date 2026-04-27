@@ -2,37 +2,37 @@
 
 namespace App\Entity;
 
-use App\Repository\InventoryBatchRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-use Symfony\Component\Serializer\Annotation\Groups;
-
-#[ORM\Entity(repositoryClass: InventoryBatchRepository::class)]
-#[ORM\Table(name: 'inventory_batch')]
-class InventoryBatch
+#[ORM\Entity]
+class StockMovement
 {
+    const TYPE_OUT='OUT';
+    CONST TYPE_IN='IN';
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['product:read'])]
     private ?int $id = null;
 
-    // 🔹 Relación con producto
+    // 🔹 Producto
     #[ORM\ManyToOne(targetEntity: Product::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?Product $product = null;
 
-    // 🔹 Cantidad disponible en este lote
+    // 🔹 Batch (opcional pero MUY útil)
+    #[ORM\ManyToOne(targetEntity: InventoryBatch::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?InventoryBatch $batch = null;
+
+    // 🔹 Tipo: IN / OUT
+    #[ORM\Column(length: 10)]
+    private string $type;
+
+    // 🔹 Cantidad
     #[ORM\Column]
-    #[Groups(['product:read'])]
     private int $quantity;
 
-    // 🔹 Fecha de caducidad (puede ser null)
-    #[Groups(['product:read'])]
-    #[ORM\Column(type: 'datetime', nullable: true)]
-    private ?\DateTimeInterface $expirationDate = null;
-
-    // 🔹 Fecha de creación del lote
+    // 🔹 Fecha
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -42,7 +42,7 @@ class InventoryBatch
     }
 
     // ======================
-    // GETTERS & SETTERS
+    // GETTERS / SETTERS
     // ======================
 
     public function getId(): ?int
@@ -61,25 +61,36 @@ class InventoryBatch
         return $this;
     }
 
+    public function getBatch(): ?InventoryBatch
+    {
+        return $this->batch;
+    }
+
+    public function setBatch(?InventoryBatch $batch): self
+    {
+        $this->batch = $batch;
+        return $this;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    public function setType(string $type): self
+    {
+        $this->type = $type;
+        return $this;
+    }
+
     public function getQuantity(): int
     {
-        return $this->quantity ?? 0;
+        return $this->quantity;
     }
 
     public function setQuantity(int $quantity): self
     {
         $this->quantity = $quantity;
-        return $this;
-    }
-
-    public function getExpirationDate(): ?\DateTimeInterface
-    {
-        return $this->expirationDate;
-    }
-
-    public function setExpirationDate(?\DateTimeInterface $expirationDate): self
-    {
-        $this->expirationDate = $expirationDate;
         return $this;
     }
 
