@@ -17,63 +17,81 @@ class StockService
     // CONSUMIR STOCK (FIFO)
     // ======================
     public function consume(Product $product, int $quantity): void
-    {
-        $batches = $product->getBatches()->toArray();
+{
+    $this->em->beginTransaction();
 
-        usort($batches, function ($a, $b) {
-            return $a->getExpirationDate() <=> $b->getExpirationDate();
-        });
-
+    try {
         $remaining = $quantity;
 
+        $batches = $this->em->getRepository(InventoryBatch::class)
+            ->createQueryBuilder('b')
+            ->where('b.product = :product')
+            ->andWhere('b.quantity > 0')
+            ->orderBy('b.expirationDate', 'ASC')
+            ->setParameter('product', $product)
+            ->getQuery()
+            ->getResult();
+
         foreach ($batches as $batch) {
+
             if ($remaining <= 0) break;
 
-            $batchQty = $batch->getQuantity();
+            // 🔒 lock
+            $this->em->lock($batch, \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
 
-            if ($batchQty <= 0) continue;
+            $available = $batch->getQuantity();
 
-            if ($batchQty >= $remaining) {
-                $batch->setQuantity($batchQty - $remaining);
-                $remaining = 0;
-            } else {
-                $remaining -= $batchQty;
-                $batch->setQuantity(0);
-            }
+            if ($available <= 0) continue;
+
+            $take = min($available, $remaining);
+
+            $batch->decrease($take);
+
+            // 🧾 movimiento por batch (IMPORTANTE)
+            $movement = new StockMovement();
+            $movement->setProduct($product);
+            $movement->setBatch($batch);
+            $movement->setType(StockMovement::TYPE_OUT);
+            $movement->setQuantity($take);
+
+            $this->em->persist($movement);
+
+            $remaining -= $take;
         }
 
         if ($remaining > 0) {
-            throw new \Exception('Stock insuficiente');
+            throw new \RuntimeException('Stock insuficiente');
         }
 
-        // registrar movimiento
-        $movement = new StockMovement();
-        $movement->setProduct($product);
-        $movement->setBatch($batch);
-        $movement->setType(StockMovement::TYPE_OUT);
-        $movement->setQuantity($quantity);
-
-        $this->em->persist($movement);
         $this->em->flush();
+        $this->em->commit();
+
+    } catch (\Exception $e) {
+        $this->em->rollback();
+        throw $e;
     }
+}
 
     // ======================
     // AÑADIR STOCK
     // ======================
     public function addStock(Product $product, int $quantity, ?\DateTime $expiration = null): void
-    {
-        $batch = new InventoryBatch();
-        $batch->setProduct($product);
-        $batch->setQuantity($quantity);
-        $batch->setExpirationDate($expiration ?? new \DateTime('+1 year'));
+{
+    $batch = new InventoryBatch();
+    $batch->setProduct($product);
+    $batch->setQuantity($quantity);
+    $batch->setExpirationDate($expiration ?? new \DateTime('+1 year'));
 
-        $movement = new StockMovement();
-        $movement->setProduct($product);
-        $movement->setType(StockMovement::TYPE_IN);
-        $movement->setQuantity($quantity);
+    $this->em->persist($batch);
 
-        $this->em->persist($batch);
-        $this->em->persist($movement);
-        $this->em->flush();
-    }
+    $movement = new StockMovement();
+    $movement->setProduct($product);
+    $movement->setBatch($batch); // 🔥 importante
+    $movement->setType(StockMovement::TYPE_IN);
+    $movement->setQuantity($quantity);
+
+    $this->em->persist($movement);
+
+    $this->em->flush();
+}
 }

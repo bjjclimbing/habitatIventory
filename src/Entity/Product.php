@@ -50,11 +50,20 @@ class Product
 
     #[ORM\OneToMany(mappedBy: 'product', targetEntity: StockMovement::class)]
     private Collection $movements;
+    #[ORM\OneToMany(
+        mappedBy: 'product',
+        targetEntity: ProductCost::class,
+        orphanRemoval: true
+    )]
+    #[ORM\OrderBy(['createdAt' => 'DESC'])]
+    private Collection $costs;
 
     public function __construct()
     {
         $this->batches = new ArrayCollection();
         $this->movements = new ArrayCollection();
+        $this->costs = new ArrayCollection(); // 🔥 IMPORTANTE
+
     }
 
     public function getId(): ?int { return $this->id; }
@@ -107,4 +116,17 @@ class Product
     }
 
     public function getMovements(): Collection { return $this->movements; }
+    public function getCosts(): Collection
+{
+    return $this->costs;
+}
+public function addCost(ProductCost $cost): self
+{
+    if (!$this->costs->contains($cost)) {
+        $this->costs[] = $cost;
+        $cost->setProduct($this);
+    }
+    return $this;
+}
+
 }

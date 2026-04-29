@@ -87,4 +87,29 @@ class InventoryBatch
     {
         return $this->createdAt;
     }
+    public function decrease(int $qty): void
+{
+    if ($qty < 0) {
+        throw new \InvalidArgumentException('Quantity must be positive');
+    }
+
+    if ($this->quantity < $qty) {
+        throw new \RuntimeException(sprintf(
+            'Not enough stock in batch %d. Available: %d, requested: %d',
+            $this->id,
+            $this->quantity,
+            $qty
+        ));
+    }
+
+    $this->quantity -= $qty;
+}
+public function increase(int $qty): void
+{
+    if ($qty < 0) {
+        throw new \InvalidArgumentException('Quantity must be positive');
+    }
+
+    $this->quantity += $qty;
+}
 }

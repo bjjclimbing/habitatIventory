@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Product;
+use App\Entity\ProductCost;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -15,6 +16,16 @@ class ProductRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Product::class);
     }
+    public function findLastCost(Product $product): ?ProductCost
+{
+    return $this->createQueryBuilder('c')
+        ->where('c.product = :product')
+        ->setParameter('product', $product)
+        ->orderBy('c.createdAt', 'DESC')
+        ->setMaxResults(1)
+        ->getQuery()
+        ->getOneOrNullResult();
+}
 
 //    /**
 //     * @return Product[] Returns an array of Product objects

@@ -1,0 +1,5 @@
+SKU,QUANTITY,VALIJA_NAME,REFERENCE,COMMENTS
+A123,2,,SALE-001,Venta tienda
+A123,1,ValijaCabina1,VAL-001,Consumo cabina
+B456,1,ValijaCabina1,VAL-002,Agua cabina
+A123,1,,SALE-002,Venta normal
