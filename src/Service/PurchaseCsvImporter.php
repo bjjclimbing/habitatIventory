@@ -115,7 +115,7 @@ class PurchaseCsvImporter
                 $product->setMinStock(10);
 
                 $this->em->persist($product);
-
+                $this->em->flush();
                 $createdProducts[] = $sku;
             }
 
@@ -130,7 +130,7 @@ class PurchaseCsvImporter
 
             if ($total > 0) {
 
-                $lastCost = $this->productCostRepo->findLastCost($product);
+                $lastCost = $this->productCostRepo->findLastCostByProductId($product->getId());
 
                 if (
                     !$lastCost ||

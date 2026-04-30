@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
-
+import { api } from "./api"; // 🔥 CAMBIO CLAVE
+import { useAuth } from "./auth/useAuth";
 export default function App() {
+  const { logout, user } = useAuth();
   const [products, setProducts] = useState([]);
   const [providers, setProviders] = useState([]);
   const [providerId, setProviderId] = useState("");
@@ -18,10 +19,11 @@ export default function App() {
   // LOAD PROVIDERS
   // =========================
   useEffect(() => {
-    axios.get("http://localhost:8000/api/providers")
+    api.get("/providers") // 🔥 CAMBIO
       .then(res => {
         setProviders(res.data.member || []);
-      });
+      })
+      .catch(console.error);
   }, []);
 
   // =========================
@@ -41,12 +43,12 @@ export default function App() {
     loading.current = true;
 
     try {
-      let url = `http://localhost:8000/api/products?page=${pageToLoad}`;
+      let query = `/products?page=${pageToLoad}`;
 
-      if (providerId) url += `&provider=${providerId}`;
-      if (search) url += `&name=${search}`;
+      if (providerId) query += `&provider=${providerId}`;
+      if (search) query += `&name=${search}`;
 
-      const res = await axios.get(url);
+      const res = await api.get(query); // 🔥 CAMBIO
 
       const newData = res.data.data || [];
 
@@ -66,12 +68,11 @@ export default function App() {
   };
 
   // =========================
-  // SCROLL (infinite + back to top)
+  // SCROLL
   // =========================
   useEffect(() => {
     const handleScroll = () => {
 
-      // infinite scroll
       if (
         window.innerHeight + window.scrollY >=
         document.body.offsetHeight - 200
@@ -81,7 +82,6 @@ export default function App() {
         }
       }
 
-      // botón back to top
       setShowTop(window.scrollY > 400);
     };
 
@@ -100,33 +100,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-100">
 
-      {/* HEADER */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+      
 
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              📦 Inventory Dashboard
-            </h1>
-            <p className="text-sm text-gray-500">
-              Gestión de productos y proveedores
-            </p>
-          </div>
-
-          <Link
-            to="/dashboard"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm shadow"
-          >
-            Dashboard
-          </Link>
-
-        </div>
-      </div>
-
-      {/* CONTENT */}
       <div className="max-w-6xl mx-auto p-6">
 
-        {/* FILTROS */}
         <div className="mb-6 flex gap-3 items-center">
 
           <select
@@ -156,7 +133,6 @@ export default function App() {
 
         </div>
 
-        {/* TABLA */}
         <div className="bg-white rounded-xl shadow overflow-hidden">
 
           <table className="w-full text-sm">
@@ -173,7 +149,6 @@ export default function App() {
               {products.map(p => (
                 <tr key={p.id} className="border-t hover:bg-gray-50">
 
-                  {/* PRODUCT LINK */}
                   <td className="p-4">
                     <Link
                       to={`/products/${p.id}`}
@@ -183,7 +158,6 @@ export default function App() {
                     </Link>
                   </td>
 
-                  {/* PROVIDER LINK */}
                   <td>
                     {p.provider ? (
                       <Link
@@ -192,9 +166,8 @@ export default function App() {
                       >
                         {p.provider.name}
                       </Link>
-                    ) : (
-                      "-"
-                    )}
+                    ) : "-"
+                    }
                   </td>
 
                   <td className="text-center font-semibold">
@@ -209,7 +182,6 @@ export default function App() {
 
         </div>
 
-        {/* LOADING */}
         {products.length < total && (
           <div className="text-center p-4 text-gray-500">
             Cargando más productos...
@@ -218,7 +190,6 @@ export default function App() {
 
       </div>
 
-      {/* 🔥 BACK TO TOP */}
       {showTop && (
         <button
           onClick={scrollTop}

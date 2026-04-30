@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install pdo pdo_mysql zip 
 
 RUN a2enmod rewrite
+RUN a2enmod proxy
+RUN a2enmod proxy_http
 
 COPY docker/apache/vhost.conf /etc/apache2/sites-available/000-default.conf
 
