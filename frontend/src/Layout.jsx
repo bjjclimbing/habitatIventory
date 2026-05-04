@@ -97,7 +97,7 @@ export default function Layout({ children }) {
                 <>
                   {alerts?.valija_critical > 0 && (
                     <span
-                      title="Valijas sin stock y sin disponibilidad en inventario"
+                      title="Maletas sin stock y sin disponibilidad en inventario"
                       onClick={() => navigate("/alerts?type=valija_critical")}
                       className="bg-red-500 text-white px-2 py-1 rounded cursor-pointer"
                     >
@@ -107,7 +107,7 @@ export default function Layout({ children }) {
                     {/* 🔥 VALIJA LOW */}
 {alerts?.valija_low > 0 && (
   <span
-    title="Valijas por debajo del stock mínimo"
+    title="Maletas por debajo del stock mínimo"
     onClick={() => navigate("/alerts?type=valija_low")}
     className="bg-orange-500 text-white px-2 py-1 rounded cursor-pointer"
   >

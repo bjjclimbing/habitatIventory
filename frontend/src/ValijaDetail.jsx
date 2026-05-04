@@ -33,7 +33,7 @@ export default function ValijaDetail() {
 
   const sync = async () => {
     await api.post(`/valijas/${id}/sync`);
-    alert("Valija sincronizada");
+    alert("Maleta sincronizada");
   };
 
   if (!valija) return "Loading...";

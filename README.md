@@ -1,182 +1,360 @@
 # InventoryApp
 
-InventoryApp is a Symfony 7.4 inventory backend for importing product data from CSV files and exposing product records through a JSON API.
+Aplicacion de inventario con backend en Symfony y frontend en React/Vite. El sistema permite autenticar usuarios con JWT, consultar productos y proveedores, importar compras y ventas, controlar stock por lotes, revisar alertas y sincronizar stock de valijas.
 
-The application stores products, providers, hierarchical categories, product cost history, and inventory batches with Doctrine ORM.
+## Stack
 
-## Features
+- Backend: Symfony 7, Doctrine ORM, Twig, LexikJWTAuthenticationBundle
+- Frontend: React 19, React Router, Axios, Vite, Recharts
+- Base de datos: MariaDB/MySQL segun `DATABASE_URL`
+- Contenedores: Docker Compose con Apache + PHP
 
-- CSV inventory import command: `app:import:inventory`
-- Product listing endpoint: `GET /api/products`
-- Provider normalization by name
-- Category tree import from procedure, group, and subgroup columns
-- Product cost history records with direct, shipping, and total costs
-- Doctrine ORM entities using PHP attributes
-- Symfony Console, Twig, API Platform, Messenger, and PHPUnit dependencies
+## Funcionalidades
 
-## Requirements
+- Login con JWT en `POST /api/login`
+- Listado y detalle de productos
+- Consumo de stock y consulta de movimientos
+- Dashboard con metricas de inventario
+- Listado de proveedores
+- Importacion de compras y ventas desde CSV
+- Importacion de inventario desde XLSX por comando
+- Alertas de stock bajo, vencimiento y stock en valijas
+- Sincronizacion de valijas
 
-- PHP 8.2 or newer
+## Estructura
+
+```text
+.
+├── src/                 # Backend Symfony
+│   ├── Command/         # Comandos CLI
+│   ├── Controller/      # Endpoints HTTP
+│   ├── Entity/          # Entidades Doctrine
+│   ├── Repository/      # Repositorios
+│   └── Service/         # Logica de negocio
+├── frontend/            # Frontend React/Vite
+│   ├── src/
+│   └── public/
+├── config/              # Configuracion Symfony
+├── public/              # Front controller y build del frontend
+├── templates/           # Twig
+├── docker/              # Dockerfiles y vhosts
+└── tests/
+```
+
+## Requisitos
+
+- PHP 8.2 o superior
 - Composer
-- A database supported by the configured `DATABASE_URL`
-- Docker and Docker Compose, if running through containers
+- Node.js 20 o superior
+- npm
+- MariaDB/MySQL accesible con los datos de `DATABASE_URL`
+- Docker y Docker Compose si vas a levantar el proyecto en contenedores
 
-The current `.env` file is configured for MariaDB:
+## Configuracion
+
+El proyecto incluye estas variables base en `.env`:
 
 ```dotenv
 DATABASE_URL="mysql://root:kubiadmin@mariadb:3306/inventory?serverVersion=10.6"
 ```
 
-The PHP Docker image includes MySQL PDO extensions. The Symfony-generated `compose.yaml` also defines a PostgreSQL service, but it does not match the current `DATABASE_URL`. Use one database setup consistently before running the app.
-
-## Installation
-
-Install dependencies:
-
-```bash
-composer install
-```
-
-Create a local environment override if needed:
+Si trabajas fuera de Docker, crea un override local:
 
 ```bash
 cp .env .env.local
 ```
 
-Update `DATABASE_URL` in `.env.local` for your database.
+Ajusta en `.env.local` al menos:
 
-Create or update the database schema. This project currently has no committed Doctrine migrations, so for local development you can use:
+- `DATABASE_URL`
+- configuracion JWT si cambias claves o rutas
+- mailer, si vas a enviar alertas por correo
+
+## Instalacion
+
+### Backend
 
 ```bash
+composer install
 php bin/console doctrine:database:create --if-not-exists
 php bin/console doctrine:schema:update --force
 ```
 
-For production, generate and review migrations instead:
+### Frontend
 
 ```bash
-php bin/console make:migration
-php bin/console doctrine:migrations:migrate
+cd frontend
+npm install
 ```
 
-## Running Locally
+## Ejecucion en desarrollo
 
-Start the Symfony development server if it is installed:
+### Backend Symfony
+
+Con Symfony CLI:
 
 ```bash
 symfony server:start
 ```
 
-Or use PHP's built-in server:
+O con PHP:
 
 ```bash
 php -S 127.0.0.1:8000 -t public
 ```
 
-The product endpoint will be available at:
+### Frontend Vite
 
-```text
-GET http://127.0.0.1:8000/api/products
-```
-
-## Running With Docker
-
-The `docker-compose.yml` file builds an Apache/PHP container and exposes the app on port `8000`:
+En otra terminal:
 
 ```bash
-docker compose -f docker-compose.yml up --build
+cd frontend
+npm run dev
 ```
 
-The container expects an external Docker network named `h3_net`:
+## Build del frontend
+
+Para compilar y copiar el frontend al directorio `public/` del backend:
+
+```bash
+./build-frontend.sh
+```
+
+Ese script hace:
+
+1. `npm install`
+2. `npm run build`
+3. copia `frontend/dist/*` dentro de `public/`
+
+## Docker
+
+El `docker-compose.yml` levanta un contenedor `app` con Apache y PHP y expone la aplicacion en el puerto `8000`.
 
 ```bash
 docker network create h3_net
+docker compose up --build
 ```
 
-Make sure a database container is reachable with the hostname used in `DATABASE_URL` before starting the application. With the current `.env`, that hostname is `mariadb`.
+Notas:
 
-## CSV Import
+- El compose espera una red externa llamada `h3_net`
+- El contenedor monta el proyecto en `/var/www`
+- La aplicacion usa el host `mariadb` en `DATABASE_URL`, asi que esa base debe existir y ser accesible desde la red Docker
 
-Import inventory with:
+## Autenticacion
 
-```bash
-php bin/console app:import:inventory path/to/inventory.csv
-```
-
-Expected CSV columns:
-
-```text
-CODIGO
-PRODUCTO
-MARCA
-PROCEDIMIENTO
-GRUPO
-SUBGRUPO
-COSTO_DIRECTO
-ENVIO_NACIONALIZACION
-COSTE_TOTAL
-```
-
-Import behavior:
-
-- Rows without `CODIGO` or `PRODUCTO` are skipped.
-- `MARCA` is used as the provider name and product brand.
-- `PROCEDIMIENTO`, `GRUPO`, and `SUBGRUPO` are imported as a category hierarchy.
-- New products are created with a default minimum stock of `10`.
-- A `ProductCost` row is created when `COSTE_TOTAL` is greater than `0`.
-- The import flushes and clears Doctrine every 100 rows.
-
-## API
-
-### List Products
+Login:
 
 ```http
-GET /api/products
+POST /api/login
+Content-Type: application/json
 ```
 
-Response shape:
+Body:
 
 ```json
-[
-  {
-    "id": 1,
-    "sku": "ABC-123",
-    "name": "Example Product",
-    "brand": "Example Brand",
-    "minStock": 10
-  }
-]
+{
+  "email": "admin@example.com",
+  "password": "secret"
+}
 ```
 
-## Domain Model
+Respuesta:
 
-- `Product`: SKU, name, brand, minimum stock, provider, category, and inventory batches.
-- `Provider`: normalized provider name plus optional email, phone, contact person, and address.
-- `Category`: self-referencing category tree with unique name and parent combinations.
-- `ProductCost`: cost history for a product, including direct cost, shipping/import cost, total cost, and creation date.
-- `InventoryBatch`: product quantity batches with optional expiration dates.
+```json
+{
+  "token": "jwt-token"
+}
+```
+
+El frontend envia automaticamente `Authorization: Bearer <token>` desde `frontend/src/api.js`.
+
+## Endpoints principales
+
+Todas las rutas `/api` requieren autenticacion, excepto `/api/login`. Las rutas de importacion estan restringidas a `ROLE_ADMIN`.
+
+### Productos
+
+- `GET /api/products`
+- `GET /api/products/{id}`
+- `POST /api/products/{id}/consume`
+- `GET /api/products/{id}/movements`
+
+Filtros disponibles en `GET /api/products`:
+
+- `provider=<id>`
+- `name=<texto>`
+- `page=<n>`
+
+### Dashboard
+
+- `GET /api/dashboard`
+
+### Proveedores
+
+- `GET /api/providers`
+
+### Importaciones
+
+- `POST /api/import/purchases`
+- `POST /api/import/sales`
+
+`/api/import/purchases` acepta:
+
+- archivo en campo `file`
+- modo opcional `mode` con valores `strict` o `create`
+
+### Alertas
+
+- `GET /api/alerts`
+- `GET /api/alerts/details?type=low_stock`
+
+Tipos observados en el sistema:
+
+- `low_stock`
+- `warning`
+- `expired`
+- `valija_low`
+- `valija_critical`
+
+### Valijas
+
+- `POST /api/valijas/sync`
+
+## Comandos utiles
+
+### Usuarios
+
+Crear usuario normal:
+
+```bash
+php bin/console app:create:user user@example.com secret
+```
+
+Crear administrador:
+
+```bash
+php bin/console app:create:user admin@example.com secret --admin
+```
+
+### Importaciones
+
+Importar compras:
+
+```bash
+php bin/console app:import:purchases /ruta/archivo.csv create
+```
+
+Importar ventas:
+
+```bash
+php bin/console app:import:sales /ruta/ventas.csv
+```
+
+Importar inventario desde Excel:
+
+```bash
+php bin/console app:import:inventory-xlsx /ruta/inventario.xlsx
+```
+
+Opcionalmente puedes indicar la hoja:
+
+```bash
+php bin/console app:import:inventory-xlsx /ruta/inventario.xlsx "costos-venta detallado"
+```
+
+### Stock y alertas
+
+Revisar inventario:
+
+```bash
+php bin/console app:inventory:check
+```
+
+Sincronizar valijas:
+
+```bash
+php bin/console app:valija:sync
+```
+
+## Importacion de datos
+
+### Compras y ventas
+
+Las importaciones HTTP y CLI reutilizan servicios dedicados:
+
+- `App\Service\PurchaseCsvImporter`
+- `App\Service\SalesCsvImporter`
+
+### Inventario XLSX
+
+El comando `app:import:inventory-xlsx`:
+
+- detecta la fila de cabecera buscando `CODIGO`
+- normaliza nombres de columnas
+- crea o reutiliza proveedores, categorias y productos
+- registra historico de costos
+- sincroniza lotes con stock y fecha de vencimiento
+
+Columnas relevantes detectadas por el importador:
+
+- `CODIGO`
+- `PRODUCTO`
+- `MARCA`
+- `PROCEDIMIENTO`
+- `GRUPO`
+- `SUBGRUPO`
+- `COSTO_DIRECTO`
+- `ENVIO_NACIONALIZACION`
+- `COSTE_TOTAL`
+- `EXISTENCIA`
+- `FECHA_VENCIMIENTO`
+
+## Frontend
+
+Rutas principales del frontend:
+
+- `/login`
+- `/`
+- `/dashboard`
+- `/import`
+- `/alerts`
+- `/products/:id`
+- `/providers/:id`
+- `/valijas/:id`
+
+El frontend usa:
+
+- `AuthContext` para persistir token
+- `axios` con interceptores para adjuntar JWT
+- redireccion a `/login` cuando el backend responde `401`
+
+## Seguridad
+
+Resumen de `config/packages/security.yaml`:
+
+- `/api/login` es publico
+- `/api/import*` requiere `ROLE_ADMIN`
+- el resto de `/api` requiere `IS_AUTHENTICATED_FULLY`
+- el firewall API es stateless y usa JWT
 
 ## Tests
 
-Run PHPUnit:
+Ejecutar tests backend:
 
 ```bash
 php bin/phpunit
 ```
 
-At the time this README was created, the test suite only contained `tests/bootstrap.php`; no application tests were present.
-
-## Useful Commands
+Lint del frontend:
 
 ```bash
-php bin/console debug:router
-php bin/console list app
-php bin/console doctrine:schema:validate
-php bin/console cache:clear
+cd frontend
+npm run lint
 ```
 
-## Notes
+## Notas
 
-- The project requires PHP `>=8.2`. Running console commands with PHP 7.4 will fail during Composer platform checks.
-- `vendor/` and `var/` are present in this working copy. In a normal repository, they are usually excluded from version control.
-- There are no committed Doctrine migration files yet.
+- El arbol del proyecto contiene tambien archivos generados en `public/assets` y caches en `var/`
+- Hay una copia no estandar en `src/Controller/AlertController copy.php`; no forma parte del flujo normal
+- Si vas a desplegar sin Vite en desarrollo, recuerda regenerar `public/` con `./build-frontend.sh`

@@ -14,7 +14,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import { useAuth } from "./auth/useAuth";
 import AlertsPage from "./AlertsPage";
 import "./index.css";
-
+import ValijaDetail from "./ValijaDetail";
 function PrivateLayout({ children }) {
   const { token } = useAuth();
 
@@ -80,6 +80,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             }
           />
           <Route
+  path="/valijas/:id"
+  element={
+    <PrivateLayout>
+      <ValijaDetail />
+    </PrivateLayout>
+  }
+/>
+          <Route
   path="/alerts"
   element={
     <PrivateLayout>
@@ -87,6 +95,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </PrivateLayout>
   }
 />
+
         </Routes>
       </BrowserRouter>
     </AuthProvider>
