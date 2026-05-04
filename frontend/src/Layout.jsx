@@ -69,6 +69,12 @@ export default function Layout({ children }) {
             >
               Productos
             </Link>
+            <Link
+              to="/valijas"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+            >
+              📦 Maletas
+            </Link>
 
             <Link
               to="/dashboard"
@@ -104,16 +110,16 @@ export default function Layout({ children }) {
                       🔥 {alerts.valija_critical}
                     </span>
                   )}
-                    {/* 🔥 VALIJA LOW */}
-{alerts?.valija_low > 0 && (
-  <span
-    title="Maletas por debajo del stock mínimo"
-    onClick={() => navigate("/alerts?type=valija_low")}
-    className="bg-orange-500 text-white px-2 py-1 rounded cursor-pointer"
-  >
-    📦 {alerts.valija_low}
-  </span>
-)}
+                  {/* 🔥 VALIJA LOW */}
+                  {alerts?.valija_low > 0 && (
+                    <span
+                      title="Maletas por debajo del stock mínimo"
+                      onClick={() => navigate("/alerts?type=valija_low")}
+                      className="bg-orange-500 text-white px-2 py-1 rounded cursor-pointer"
+                    >
+                      📦 {alerts.valija_low}
+                    </span>
+                  )}
                   {alerts?.low_stock > 0 && (
                     <span
                       title="Productos por debajo del stock mínimo"
