@@ -60,8 +60,9 @@ class PurchaseCsvImporter
                 $expirationDate,
                 $costDirect,
                 $costShipping,
-                $costTotal
-            ] = array_pad($row, 12, null);
+                $costTotal,
+                $prRvn // 🔥 NUEVO
+            ] = array_pad($row, 13, null);
 
             // 🔹 limpieza
             $sku = strtoupper(trim($sku ?? ''));
@@ -116,6 +117,7 @@ class PurchaseCsvImporter
 
                 $this->em->persist($product);
                 $this->em->flush();
+
                 $createdProducts[] = $sku;
             }
 
@@ -159,11 +161,31 @@ class PurchaseCsvImporter
                 }
             }
 
+            // ===== 🔥 COMISIÓN =====
+            $commissionPercent = null;
+
+            if ($prRvn !== null && trim($prRvn) !== '') {
+
+                $value = str_replace(',', '.', trim($prRvn));
+
+                if (!is_numeric($value)) {
+                    throw new \RuntimeException("Row $rowNumber: comisión inválida");
+                }
+
+                $commissionPercent = (float) $value;
+
+                // validación básica
+                if ($commissionPercent < 0 || $commissionPercent > 100) {
+                    throw new \RuntimeException("Row $rowNumber: comisión fuera de rango (0–100)");
+                }
+            }
+
             // ===== Stock =====
             $this->stockService->addStock(
                 $product,
                 $quantity,
-                $expiration
+                $expiration,
+                $commissionPercent // 🔥 AQUÍ VA
             );
         }
 

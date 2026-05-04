@@ -75,12 +75,14 @@ class StockService
     // ======================
     // AÑADIR STOCK
     // ======================
-    public function addStock(Product $product, int $quantity, ?\DateTime $expiration = null): void
+    public function addStock(Product $product, int $quantity, ?\DateTime $expiration = null,
+    ?float $commissionPercent = null): void
 {
     $batch = new InventoryBatch();
     $batch->setProduct($product);
     $batch->setQuantity($quantity);
     $batch->setExpirationDate($expiration ?? new \DateTime('+1 year'));
+    $batch->setCommissionPercent($commissionPercent);
 
     $this->em->persist($batch);
 

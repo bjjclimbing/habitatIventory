@@ -45,6 +45,7 @@ $clean = array_map(function ($item) {
             ] : null,
 
             'valija' => isset($item['valija']) ? [
+                'id' =>$item['valija']->getId(),
                 'name' => $item['valija']->getName()
             ] : null,
 

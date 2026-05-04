@@ -36,6 +36,9 @@ class InventoryBatch
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $commissionPercent = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -88,28 +91,38 @@ class InventoryBatch
         return $this->createdAt;
     }
     public function decrease(int $qty): void
-{
-    if ($qty < 0) {
-        throw new \InvalidArgumentException('Quantity must be positive');
+    {
+        if ($qty < 0) {
+            throw new \InvalidArgumentException('Quantity must be positive');
+        }
+
+        if ($this->quantity < $qty) {
+            throw new \RuntimeException(sprintf(
+                'Not enough stock in batch %d. Available: %d, requested: %d',
+                $this->id,
+                $this->quantity,
+                $qty
+            ));
+        }
+
+        $this->quantity -= $qty;
+    }
+    public function increase(int $qty): void
+    {
+        if ($qty < 0) {
+            throw new \InvalidArgumentException('Quantity must be positive');
+        }
+
+        $this->quantity += $qty;
+    }
+    public function getCommissionPercent(): ?float
+    {
+        return $this->commissionPercent;
     }
 
-    if ($this->quantity < $qty) {
-        throw new \RuntimeException(sprintf(
-            'Not enough stock in batch %d. Available: %d, requested: %d',
-            $this->id,
-            $this->quantity,
-            $qty
-        ));
+    public function setCommissionPercent(?float $commissionPercent): self
+    {
+        $this->commissionPercent = $commissionPercent;
+        return $this;
     }
-
-    $this->quantity -= $qty;
-}
-public function increase(int $qty): void
-{
-    if ($qty < 0) {
-        throw new \InvalidArgumentException('Quantity must be positive');
-    }
-
-    $this->quantity += $qty;
-}
 }
