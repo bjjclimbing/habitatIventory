@@ -2,16 +2,18 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiResource;
 use App\Entity\Category;
 use App\Entity\Provider;
+use App\Repository\ProductCostRepository;
 use App\Repository\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
-use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
-use ApiPlatform\Metadata\ApiFilter;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 class Product
@@ -127,6 +129,10 @@ public function addCost(ProductCost $cost): self
         $cost->setProduct($this);
     }
     return $this;
+}
+public function getLastPrice(): ?float
+{
+    return $this->costs->last()?->getTotalCost();
 }
 
 }

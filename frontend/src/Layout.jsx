@@ -1,209 +1,221 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
+import { useAuth } from "./auth/useAuth";
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import { useAuth } from "./auth/useAuth";
 
 export default function Layout({ children }) {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { logout } = useAuth();
 
+  // =========================
+  // ALERTAS DINÁMICAS
+  // =========================
   const [alerts, setAlerts] = useState({
-    valija_critical: 0,
-    valija_low: 0,
-    low_stock: 0,
-    warning: 0,
-    expired: 0
+    low_stock: false,
+    warning: false,
+    expired: false,
+    valija_low: false,
+    valija_critical: false,
   });
-
-  const [loadingAlerts, setLoadingAlerts] = useState(true);
-
-  // =========================
-  // LOAD ALERTS (polling)
-  // =========================
-  useEffect(() => {
-    loadAlerts();
-
-    const interval = setInterval(loadAlerts, 30000); // cada 30s
-
-    return () => clearInterval(interval);
-  }, []);
 
   const loadAlerts = async () => {
     try {
-      const res = await api.get("/alerts");
-      setAlerts(res.data);
+      const types = [
+        "low_stock",
+        "warning",
+        "expired",
+        "valija_low",
+        "valija_critical",
+      ];
+
+      const results = await Promise.all(
+        types.map((type) =>
+          api
+            .get(`/alerts/details?type=${type}`)
+            .then((res) => ({
+              type,
+              has: (res.data || []).length > 0,
+            }))
+            .catch(() => ({ type, has: false }))
+        )
+      );
+
+      const mapped = {};
+      results.forEach((r) => {
+        mapped[r.type] = r.has;
+      });
+
+      setAlerts(mapped);
     } catch (e) {
-      console.error("Error cargando alertas", e);
-    } finally {
-      setLoadingAlerts(false);
+      console.warn("Error cargando alertas");
     }
   };
 
+  useEffect(() => {
+    loadAlerts();
+
+    // 🔁 refresco automático cada 30s (opcional)
+    const interval = setInterval(loadAlerts, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // =========================
-  // UI
+  // NAV STYLE
   // =========================
+  const navClass = ({ isActive }) =>
+    `flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium transition
+     ${
+       isActive
+         ? "bg-blue-600 text-white shadow"
+         : "text-gray-600 hover:bg-gray-100"
+     }`;
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100">
 
-      {/* HEADER */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+      {/* =========================
+          SIDEBAR
+      ========================= */}
+      <aside className="w-64 bg-white shadow-md p-4 flex flex-col sticky top-0 h-screen">
 
-          {/* LOGO */}
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              📦 Inventory Dashboard
-            </h1>
-            <p className="text-sm text-gray-500">
-              Gestión de productos y proveedores
-            </p>
+        {/* LOGO */}
+        <div className="mb-6">
+          <h1 className="text-lg font-bold text-gray-800">
+            📦 Inventory
+          </h1>
+          <p className="text-xs text-gray-500">
+            Gestión de stock
+          </p>
+        </div>
+
+        {/* NAV PRINCIPAL */}
+        <nav className="flex flex-col gap-2">
+
+          <NavLink to="/" className={navClass}>
+            <span>📦 Productos</span>
+          </NavLink>
+
+          <NavLink to="/valijas" className={navClass}>
+            <span>🧳 Maletas</span>
+          </NavLink>
+
+          <NavLink to="/budgets" className={navClass}>
+  <span>🧾 Presupuestos</span>
+</NavLink>
+
+<NavLink to="/budgets/new" className={navClass}>
+  <span>➕ Nuevo presupuesto</span>
+</NavLink>
+
+          <NavLink to="/dashboard" className={navClass}>
+            <span>📊 Dashboard</span>
+          </NavLink>
+          
+
+        </nav>
+
+        {/* =========================
+            ALERTAS DINÁMICAS
+        ========================= */}
+        <div className="mt-6">
+
+          <div className="text-xs text-gray-400 mb-2 px-2">
+            ALERTAS
           </div>
 
-          {/* NAV + ALERTS */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-1">
 
-            {/* NAV */}
-            <Link
-              to="/"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
-            >
-              Productos
-            </Link>
-            <Link
-              to="/valijas"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
-            >
-              📦 Maletas
-            </Link>
-
-            <Link
-              to="/dashboard"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
-            >
-              Dashboard
-            </Link>
-
-            {user?.roles?.includes("ROLE_ADMIN") && (
+            {alerts.valija_critical && (
               <Link
-                to="/import"
-                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"
+                to="/alerts?type=valija_critical"
+                className="px-3 py-2 rounded-lg text-sm bg-purple-50 text-purple-700 font-medium"
               >
-                Import CSV
+                🔥 Valijas críticas
               </Link>
             )}
 
-            {/* ALERTS */}
-            <div className="flex gap-2 ml-4 text-xs">
+            {alerts.low_stock && (
+              <Link
+                to="/alerts?type=low_stock"
+                className="px-3 py-2 rounded-lg text-sm bg-red-50 text-red-700 font-medium"
+              >
+                🔴 Bajo stock
+              </Link>
+            )}
 
-              {loadingAlerts && (
-                <span className="text-gray-400">...</span>
-              )}
+            {alerts.valija_low && (
+              <Link
+                to="/alerts?type=valija_low"
+                className="px-3 py-2 rounded-lg text-sm bg-orange-50 text-orange-700 font-medium"
+              >
+                📦 Valijas bajo stock
+              </Link>
+            )}
 
-              {!loadingAlerts && (
-                <>
-                  {alerts?.valija_critical > 0 && (
-                    <span
-                      title="Maletas sin stock y sin disponibilidad en inventario"
-                      onClick={() => navigate("/alerts?type=valija_critical")}
-                      className="bg-red-500 text-white px-2 py-1 rounded cursor-pointer"
-                    >
-                      🔥 {alerts.valija_critical}
-                    </span>
-                  )}
-                  {/* 🔥 VALIJA LOW */}
-                  {alerts?.valija_low > 0 && (
-                    <span
-                      title="Maletas por debajo del stock mínimo"
-                      onClick={() => navigate("/alerts?type=valija_low")}
-                      className="bg-orange-500 text-white px-2 py-1 rounded cursor-pointer"
-                    >
-                      📦 {alerts.valija_low}
-                    </span>
-                  )}
-                  {alerts?.low_stock > 0 && (
-                    <span
-                      title="Productos por debajo del stock mínimo"
-                      onClick={() => navigate("/alerts?type=low_stock")}
-                      className="bg-yellow-500 text-white px-2 py-1 rounded cursor-pointer"
-                    >
-                      ⚠️ {alerts.low_stock}
-                    </span>
-                  )}
+            {alerts.warning && (
+              <Link
+                to="/alerts?type=warning"
+                className="px-3 py-2 rounded-lg text-sm bg-blue-50 text-blue-700 font-medium"
+              >
+                ⏳ Próx. caducar
+              </Link>
+            )}
 
-                  {alerts?.warning > 0 && (
-                    <span
-                      title="Productos próximos a caducar (<7 días)"
-                      onClick={() => navigate("/alerts?type=warning")}
-                      className="bg-blue-500 text-white px-2 py-1 rounded cursor-pointer"
-                    >
-                      ⏳ {alerts.warning}
-                    </span>
-                  )}
+            {alerts.expired && (
+              <Link
+                to="/alerts?type=expired"
+                className="px-3 py-2 rounded-lg text-sm bg-gray-100 text-gray-700 font-medium"
+              >
+                ❌ Caducados
+              </Link>
+            )}
 
-                  {alerts?.expired > 0 && (
-                    <span
-                      title="Productos caducados"
-                      onClick={() => navigate("/alerts?type=expired")}
-                      className="bg-gray-800 text-white px-2 py-1 rounded cursor-pointer"
-                    >
-                      ❌ {alerts.expired}
-                    </span>
-                  )}
-                </>
-              )}
-
-            </div>
-
-            {/* USER */}
-            {user?.username && (
-              <div className="text-sm text-gray-600 ml-3">
-                👤 {user.username}
+            {/* SIN ALERTAS */}
+            {!Object.values(alerts).some((v) => v) && (
+              <div className="px-3 py-2 text-sm text-gray-400">
+                ✔ Sin alertas
               </div>
             )}
 
-            {/* LOGOUT */}
-            <button
-              onClick={logout}
-              className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"
-            >
-              Logout
-            </button>
-
           </div>
+        </div>
+
+        {/* =========================
+            ACTIONS
+        ========================= */}
+        <div className="mt-auto pt-6 border-t">
+
+          <Link
+            to="/import"
+            className="block bg-green-600 text-white text-center py-2 rounded-lg text-sm hover:bg-green-700 mb-3"
+          >
+            Import CSV
+          </Link>
+
+          <button
+            onClick={logout}
+            className="w-full bg-red-500 text-white py-2 rounded-lg text-sm hover:bg-red-600"
+          >
+            Logout
+          </button>
 
         </div>
 
-        {/* LEYENDA */}
-        <div className="max-w-6xl mx-auto px-6 pb-2 flex gap-4 text-xs text-gray-500">
+      </aside>
 
-          <div className="flex items-center gap-1">
-            <span className="w-3 h-3 bg-red-500 rounded"></span>
-            Maleta crítica
-          </div>
+      {/* =========================
+          MAIN CONTENT
+      ========================= */}
+      {/* 🔥 SIN overflow para infinite scroll */}
+      <main className="flex-1 p-6">
 
-          <div className="flex items-center gap-1">
-            <span className="w-3 h-3 bg-yellow-500 rounded"></span>
-            Bajo stock
-          </div>
-
-          <div className="flex items-center gap-1">
-            <span className="w-3 h-3 bg-blue-500 rounded"></span>
-            Próximo a caducar
-          </div>
-
-          <div className="flex items-center gap-1">
-            <span className="w-3 h-3 bg-gray-800 rounded"></span>
-            Caducados
-          </div>
-
+        {/* TOP BAR */}
+        <div className="flex justify-end items-center mb-6 text-sm text-gray-600">
+          👤 admin@test.com
         </div>
 
-      </div>
-
-      {/* CONTENT */}
-      <div className="max-w-6xl mx-auto p-6">
         {children}
-      </div>
+
+      </main>
 
     </div>
   );

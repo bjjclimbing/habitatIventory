@@ -16,6 +16,9 @@ import AlertsPage from "./AlertsPage";
 import "./index.css";
 import ValijaDetail from "./ValijaDetail";
 import ValijasList from "./ValijasList";
+import BudgetPage from "./BudgetPage";
+import BudgetsList from "./BudgetsList";
+import BudgetDetail from "./BudgetDetail";
 function PrivateLayout({ children }) {
   const { token } = useAuth();
 
@@ -81,30 +84,55 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             }
           />
           <Route
-  path="/valijas"
-  element={
-    <PrivateLayout>
-      <ValijasList />
-    </PrivateLayout>
-  }
-/>
+            path="/valijas"
+            element={
+              <PrivateLayout>
+                <ValijasList />
+              </PrivateLayout>
+            }
+          />
           <Route
-  path="/valijas/:id"
-  element={
-    <PrivateLayout>
-      <ValijaDetail />
-    </PrivateLayout>
-  }
-/>
+            path="/valijas/:id"
+            element={
+              <PrivateLayout>
+                <ValijaDetail />
+              </PrivateLayout>
+            }
+          />
           <Route
-  path="/alerts"
+            path="/alerts"
+            element={
+              <PrivateLayout>
+                <AlertsPage />
+              </PrivateLayout>
+            }
+          />
+          <Route
+  path="/budgets"
   element={
     <PrivateLayout>
-      <AlertsPage />
+      <BudgetsList />
     </PrivateLayout>
   }
 />
 
+<Route
+  path="/budgets/new"
+  element={
+    <PrivateLayout>
+      <BudgetPage />
+    </PrivateLayout>
+  }
+/>
+
+<Route
+  path="/budgets/:id"
+  element={
+    <PrivateLayout>
+      <BudgetPage />
+    </PrivateLayout>
+  }
+/>
         </Routes>
       </BrowserRouter>
     </AuthProvider>

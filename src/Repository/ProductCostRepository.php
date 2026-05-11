@@ -34,4 +34,14 @@ class ProductCostRepository extends ServiceEntityRepository
         ->getQuery()
         ->getOneOrNullResult();
 }
+public function findLastCostByProduct(Product $product): ?ProductCost
+    {
+        return $this->createQueryBuilder('pc')
+            ->andWhere('pc.product = :product')
+            ->setParameter('product', $product)
+            ->orderBy('pc.createdAt', 'DESC') // 🔥 clave
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

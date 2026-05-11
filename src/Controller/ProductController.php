@@ -5,6 +5,8 @@ namespace App\Controller;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use App\Entity\Product;
+use App\Entity\ProductCost;
+use App\Repository\ProductCostRepository;
 use App\Service\StockService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -14,6 +16,11 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class ProductController extends AbstractController
 {
+    private $productCostRepo;
+    public function __construct(ProductCostRepository $productCostRepo)
+    {
+        $this->productCostRepo=$productCostRepo;
+    }
     #[Route('/api/products', methods: ['GET'])]
 public function list(Request $request, EntityManagerInterface $em): JsonResponse
 {
@@ -59,13 +66,16 @@ public function list(Request $request, EntityManagerInterface $em): JsonResponse
         foreach ($p->getBatches() as $b) {
             $stock += $b->getQuantity();
         }
-
+        $lastCost =  $this->productCostRepo->findLastCostByProduct($p);
+        $price = $lastCost?->getTotalCost() ?? 0;
+        
         $data[] = [
             'id' => $p->getId(),
             'name' => $p->getName(),
             'stock' => $stock,
             'minStock' => $p->getMinStock(),
             'brand' => $p->getBrand(),
+            'price' => $price, // ✅ CLAVE
             'provider' => [
                 'id' => $p->getProvider()?->getId(),
                 'name' => $p->getProvider()?->getName()
@@ -143,4 +153,5 @@ public function list(Request $request, EntityManagerInterface $em): JsonResponse
 
         return $this->json($data);
     }
+    
 }

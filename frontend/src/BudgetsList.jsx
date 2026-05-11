@@ -1,0 +1,140 @@
+import { useEffect, useState } from "react";
+import { api } from "./api";
+import { Link } from "react-router-dom";
+
+export default function BudgetsList() {
+  const [budgets, setBudgets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const load = async () => {
+    try {
+      const res = await api.get("/budgets");
+
+      console.log("BUDGETS RESPONSE:", res.data);
+
+      // 🔥 normalización segura SIEMPRE
+      const data =
+        res.data?.data ||
+        res.data?.budgets ||
+        res.data ||
+        [];
+
+      setBudgets(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error loading budgets", e);
+      setBudgets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =========================
+  // RENDER
+  // =========================
+  return (
+    <div className="max-w-6xl mx-auto p-6">
+
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">
+            🧾 Presupuestos
+          </h2>
+          <p className="text-sm text-gray-500">
+            Gestión de presupuestos
+          </p>
+        </div>
+
+        <Link
+          to="/budgets/new"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700"
+        >
+          + Nuevo presupuesto
+        </Link>
+      </div>
+
+      {/* LOADING */}
+      {loading && (
+        <div className="text-center text-gray-500 py-10">
+          Cargando presupuestos...
+        </div>
+      )}
+
+      {/* EMPTY */}
+      {!loading && budgets.length === 0 && (
+        <div className="text-center text-gray-500 py-10 bg-white rounded-xl shadow">
+          No hay presupuestos aún
+        </div>
+      )}
+
+      {/* TABLE */}
+      {!loading && budgets.length > 0 && (
+        <div className="bg-white rounded-xl shadow overflow-hidden">
+
+          <table className="w-full text-sm">
+
+            <thead className="bg-gray-50 text-gray-600">
+              <tr>
+                <th className="text-left p-4">Nombre</th>
+                <th className="text-center">Items</th>
+                <th className="text-center">Total</th>
+                <th className="text-right p-4">Acciones</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {budgets.map((b) => (
+                <tr key={b.id} className="border-t hover:bg-gray-50">
+
+                  {/* NAME */}
+                  <td className="p-4 font-medium text-gray-800">
+                    {b.name || `Presupuesto #${b.id}`}
+                  </td>
+
+                  {/* ITEMS COUNT */}
+                  <td className="text-center">
+                    {b.items?.length || 0}
+                  </td>
+
+                  {/* TOTAL */}
+                  <td className="text-center font-semibold text-green-600">
+                    € {Number(b.total || 0).toFixed(2)}
+                  </td>
+
+                  {/* ACTIONS */}
+                  <td className="p-4 text-right space-x-2">
+
+                    <Link
+                      to={`/budgets/${b.id}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Ver
+                    </Link>
+
+                    <a
+                      href={`/api/budgets/${b.id}/export/excel`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-green-600 hover:underline"
+                    >
+                      Excel
+                    </a>
+
+                  </td>
+
+                </tr>
+              ))}
+            </tbody>
+
+          </table>
+
+        </div>
+      )}
+
+    </div>
+  );
+}

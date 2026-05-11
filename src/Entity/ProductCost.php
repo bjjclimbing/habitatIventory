@@ -2,9 +2,10 @@
 
 namespace App\Entity;
 
+use App\Repository\ProductCostRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: ProductCostRepository::class)]
 #[ORM\Table(name: 'product_cost')]
 class ProductCost
 {
