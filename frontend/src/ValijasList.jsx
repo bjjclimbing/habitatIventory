@@ -4,10 +4,12 @@ import { Link } from "react-router-dom";
 
 export default function ValijasList() {
   const [valijas, setValijas] = useState([]);
-
+  const [newValija, setNewValija] = useState("");
+  const [loadingCreate, setLoadingCreate] = useState(false);
   useEffect(() => {
     load();
   }, []);
+
 
   const load = async () => {
     try {
@@ -18,6 +20,37 @@ export default function ValijasList() {
     }
   };
 
+  const createValija = async () => {
+    if (!newValija.trim()) return;
+
+    setLoadingCreate(true);
+
+    try {
+      await api.post("/valijas", {
+        name: newValija
+      });
+
+      setNewValija("");
+      load(); // recargar lista
+    } catch (e) {
+      console.error(e);
+      alert("Error creando valija");
+    }
+
+    setLoadingCreate(false);
+  };
+
+  const deleteValija = async (id) => {
+    if (!confirm("¿Eliminar valija completa?")) return;
+
+    try {
+      await api.delete(`/valijas/${id}`);
+      load();
+    } catch (e) {
+      console.error(e);
+      alert("Error eliminando valija");
+    }
+  };
   return (
     <div className="max-w-5xl mx-auto p-6">
 
@@ -25,6 +58,24 @@ export default function ValijasList() {
         📦 Valijas
       </h2>
 
+      <div className="bg-white p-4 rounded-xl shadow mb-6 flex gap-3">
+
+        <input
+          placeholder="Nombre de la valija..."
+          value={newValija}
+          onChange={(e) => setNewValija(e.target.value)}
+          className="border rounded-lg px-4 py-2 flex-1"
+        />
+
+        <button
+          onClick={createValija}
+          disabled={loadingCreate}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+        >
+          {loadingCreate ? "Creando..." : "➕ Crear"}
+        </button>
+
+      </div>
       <div className="bg-white rounded-xl shadow overflow-hidden">
 
         <table className="w-full text-sm">
@@ -52,13 +103,22 @@ export default function ValijasList() {
                   {v.name}
                 </td>
 
-                <td className="text-center">
+                <td className="text-center space-x-3">
+
                   <Link
                     to={`/valijas/${v.id}`}
                     className="text-blue-600 hover:underline"
                   >
                     Configurar
                   </Link>
+
+                  <button
+                    onClick={() => deleteValija(v.id)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    🗑️
+                  </button>
+
                 </td>
 
               </tr>

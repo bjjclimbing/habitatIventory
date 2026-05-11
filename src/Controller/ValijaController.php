@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Valija;
 use App\Entity\ValijaProduct;
 use App\Repository\ProductRepository;
 use App\Repository\ValijaProductRepository;
@@ -194,4 +195,55 @@ class ValijaController
 
         return new JsonResponse($data);
     }
+    #[Route('/api/valijas', methods: ['POST'])]
+public function create(
+    Request $request,
+    EntityManagerInterface $em
+): JsonResponse {
+
+    $data = json_decode($request->getContent(), true);
+
+    if (!isset($data['name']) || !trim($data['name'])) {
+        return new JsonResponse(['error' => 'Name is required'], 400);
+    }
+    $existing = $em->getRepository(Valija::class)
+    ->findOneBy(['name' => $data['name']]);
+
+if ($existing) {
+    return new JsonResponse(['error' => 'Valija already exists'], 400);
+}
+    $valija = new Valija();
+    $valija->setName(trim($data['name']));
+
+    $em->persist($valija);
+    $em->flush();
+
+    return new JsonResponse([
+        'id' => $valija->getId(),
+        'name' => $valija->getName()
+    ]);
+}
+#[Route('/api/valijas/{id}', methods: ['DELETE'])]
+public function delete(
+    int $id,
+    ValijaRepository $repo,
+    EntityManagerInterface $em
+): JsonResponse {
+
+    $valija = $repo->find($id);
+
+    if (!$valija) {
+        return new JsonResponse(['error' => 'Valija not found'], 404);
+    }
+
+    // ⚠️ IMPORTANTE: borrar relaciones primero (si no tienes cascade)
+    foreach ($valija->getProducts() as $vp) {
+        $em->remove($vp);
+    }
+
+    $em->remove($valija);
+    $em->flush();
+
+    return new JsonResponse(['status' => 'ok']);
+}
 }
