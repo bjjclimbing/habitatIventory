@@ -34,34 +34,34 @@ export default function ValijasList() {
       load(); // recargar lista
     } catch (e) {
       console.error(e);
-      alert("Error creando valija");
+      alert("Error creando maleta");
     }
 
     setLoadingCreate(false);
   };
 
   const deleteValija = async (id) => {
-    if (!confirm("¿Eliminar valija completa?")) return;
+    if (!confirm("¿Eliminar maleta completa?")) return;
 
     try {
       await api.delete(`/valijas/${id}`);
       load();
     } catch (e) {
       console.error(e);
-      alert("Error eliminando valija");
+      alert("Error eliminando maleta");
     }
   };
   return (
     <div className="max-w-5xl mx-auto p-6">
 
       <h2 className="text-2xl font-bold mb-6">
-        📦 Valijas
+        📦 Maletas
       </h2>
 
       <div className="bg-white p-4 rounded-xl shadow mb-6 flex gap-3">
 
         <input
-          placeholder="Nombre de la valija..."
+          placeholder="Nombre de la maleta..."
           value={newValija}
           onChange={(e) => setNewValija(e.target.value)}
           className="border rounded-lg px-4 py-2 flex-1"
@@ -91,7 +91,7 @@ export default function ValijasList() {
             {valijas.length === 0 && (
               <tr>
                 <td colSpan="2" className="p-4 text-center text-gray-500">
-                  No hay valijas
+                  No hay maletas
                 </td>
               </tr>
             )}
