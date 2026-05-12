@@ -6,6 +6,27 @@ export default function BudgetsList() {
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const downloadExcel = async (id) => {
+    try {
+      const res = await api.get(`/budgets/${id}/export/excel`, {
+        responseType: "blob"
+      });
+  
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+  
+      link.href = url;
+      link.setAttribute("download", `budget_${id}.xlsx`);
+  
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+  
+    } catch (e) {
+      console.error(e);
+      alert("Error descargando Excel");
+    }
+  };
   useEffect(() => {
     load();
   }, []);
@@ -115,14 +136,12 @@ export default function BudgetsList() {
                       Ver
                     </Link>
 
-                    <a
-                      href={`/api/budgets/${b.id}/export/excel`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-green-600 hover:underline"
-                    >
-                      Excel
-                    </a>
+                    <button
+    onClick={() => downloadExcel(b.id)}
+    className="bg-green-600 text-white px-3 py-1 rounded"
+  >
+    Excel
+  </button>
 
                   </td>
 

@@ -172,38 +172,118 @@ public function detail(Budget $budget): JsonResponse
     // EXPORT EXCEL
     // =========================
     #[Route('/api/budgets/{id}/export/excel', methods: ['GET'])]
-    public function exportExcel(Budget $budget): Response
-    {
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
+public function exportExcel(Budget $budget): Response
+{
+    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
 
-        $sheet->setCellValue('A1', 'Producto');
-        $sheet->setCellValue('B1', 'Cantidad');
-        $sheet->setCellValue('C1', 'Precio');
-        $sheet->setCellValue('D1', 'Total');
+    // =========================
+    // HEADER
+    // =========================
+    $sheet->setCellValue('A1', 'LUGAR Y FECHA DE EMISION:');
+    $sheet->setCellValue('C1', date('Y-m-d'));
 
-        $row = 2;
+    $sheet->setCellValue('A3', 'DATOS DEL PROVEEDOR');
 
-        foreach ($budget->getItems() as $item) {
-            $sheet->setCellValue("A$row", $item->getProduct()->getName());
-            $sheet->setCellValue("B$row", $item->getQuantity());
-            $sheet->setCellValue("C$row", $item->getUnitPrice());
-            $sheet->setCellValue("D$row", $item->getTotal());
-            $row++;
-        }
+    $sheet->setCellValue('A5', 'NOMBRE:');
+    $sheet->setCellValue('C5', 'Proveedor Demo'); // 🔥 luego dinámico
 
-        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $sheet->setCellValue('A6', 'RIF:');
+    $sheet->setCellValue('C6', 'J-XXXXXXX');
 
-        $response = new Response();
-        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        $response->headers->set('Content-Disposition', 'attachment; filename="budget_'.$budget->getId().'.xlsx"');
+    $sheet->setCellValue('A7', 'DIRECCION:');
+    $sheet->setCellValue('C7', 'Dirección proveedor');
 
-        ob_start();
-        $writer->save('php://output');
-        $response->setContent(ob_get_clean());
+    $sheet->setCellValue('A8', 'TELEFONO:');
+    $sheet->setCellValue('C8', '000000000');
 
-        return $response;
+    $sheet->setCellValue('G5', 'ORDEN DE COMPRA');
+    $sheet->setCellValue('G6', 'NRO: ' . $budget->getId());
+
+    // =========================
+    // TABLE HEADER
+    // =========================
+    $startRow = 12;
+
+    $sheet->setCellValue("A$startRow", 'REF');
+    $sheet->setCellValue("B$startRow", 'DESCRIPCIÓN');
+    $sheet->setCellValue("F$startRow", 'CANT.');
+    $sheet->setCellValue("G$startRow", 'P. UNITARIO');
+    $sheet->setCellValue("H$startRow", 'PRECIO TOTAL');
+
+    $sheet->getStyle("A$startRow:H$startRow")->getFont()->setBold(true);
+
+    // =========================
+    // DATA
+    // =========================
+    $row = $startRow + 1;
+
+    foreach ($budget->getItems() as $item) {
+
+        $sheet->setCellValue("A$row", $item->getProduct()->getSku()); // REF
+        $sheet->setCellValue("B$row", $item->getProduct()->getName());
+
+        $sheet->mergeCells("B$row:E$row");
+
+        $sheet->setCellValue("F$row", $item->getQuantity());
+        $sheet->setCellValue("G$row", $item->getUnitPrice());
+        $sheet->setCellValue("H$row", $item->getTotal());
+
+        // formato €
+        $sheet->getStyle("G$row:H$row")
+            ->getNumberFormat()
+            ->setFormatCode('#,##0.00');
+
+        $row++;
     }
+
+    // =========================
+    // TOTAL FINAL
+    // =========================
+    $sheet->setCellValue("G$row", 'TOTAL');
+    $sheet->setCellValue("H$row", $budget->getTotal());
+
+    $sheet->getStyle("G$row:H$row")->getFont()->setBold(true);
+
+    // =========================
+    // ESTILO TABLA (bordes)
+    // =========================
+    $sheet->getStyle("A$startRow:H$row")->applyFromArray([
+        'borders' => [
+            'allBorders' => [
+                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN
+            ]
+        ]
+    ]);
+
+    // =========================
+    // AUTO SIZE
+    // =========================
+    foreach (range('A', 'H') as $col) {
+        $sheet->getColumnDimension($col)->setAutoSize(true);
+    }
+
+    // =========================
+    // OUTPUT
+    // =========================
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+    $response = new Response();
+    $response->headers->set(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    $response->headers->set(
+        'Content-Disposition',
+        'attachment; filename="OC_'.$budget->getId().'.xlsx"'
+    );
+
+    ob_start();
+    $writer->save('php://output');
+    $response->setContent(ob_get_clean());
+
+    return $response;
+}
 
     // =========================
     // DELETE
