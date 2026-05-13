@@ -110,8 +110,8 @@ class AlertService
                     ];
                 }
 
-                // ⚠️ PRÓXIMO A CADUCAR
-                elseif ($days <= 7) {
+                // ⚠️ PRÓXIMO A CADUCAR (6 meses)
+                elseif ($days <= 182) {
                     $grouped['warning'][] = [
                         'product' => $product,
                         'batch' => $batch
