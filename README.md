@@ -1,97 +1,132 @@
 # InventoryApp
 
-Aplicación de inventario con backend en Symfony 7.4 y frontend en React 19 + Vite. El sistema cubre autenticación con JWT, gestión de productos y proveedores, importación de compras y ventas, control de stock por lotes, alertas de inventario y sincronización de valijas.
+Aplicación web de inventario con backend en Symfony 7.4 y frontend en React + Vite. El proyecto centraliza productos, proveedores, lotes con vencimiento, importaciones de compras y ventas, alertas operativas, presupuestos y sincronización de valijas.
 
-## Stack
+## Resumen
 
-- Backend: Symfony 7.4, Doctrine ORM, API Platform, LexikJWTAuthenticationBundle
-- Frontend: React 19, React Router 7, Axios, Vite, Tailwind CSS, Recharts
-- Base de datos: MariaDB/MySQL
-- Infraestructura: Docker Compose con Apache + PHP
+- Backend API en Symfony 7.4 con Doctrine, JWT y API Platform
+- Frontend SPA en React 19 con React Router, Axios, Tailwind CSS y Recharts
+- Base de datos MariaDB/MySQL
+- Despliegue con Docker + Apache + PHP 8.2
+- Build del frontend empaquetado dentro de `public/` o `public/build/` según el flujo usado
 
-## Funcionalidades
+## Funcionalidades principales
 
-- Login con JWT en `POST /api/login`
-- Listado y detalle de productos
-- Consumo de stock y consulta de movimientos
-- Dashboard con métricas de inventario
-- Listado y detalle de proveedores
+- Autenticación JWT en `POST /api/login`
+- Catálogo de productos con búsqueda, paginación y filtro por proveedor
+- Consulta de stock por lotes y movimientos de inventario
 - Importación de compras y ventas desde CSV
-- Importación de inventario desde XLSX por comando
-- Alertas de stock bajo, vencimientos y estado de valijas
-- Gestión de valijas:
-  - listado de valijas
-  - configuración de productos por valija
-  - edición de stock mínimo por producto
-  - sincronización individual o masiva
+- Importación masiva de inventario desde XLSX por consola
+- Alertas de stock bajo, vencimientos y valijas
+- Gestión de valijas y sincronización de stock
+- Gestión de presupuestos con exportación a Excel
+- Alta de usuarios administradores y usuarios estándar
 
-## Estructura
+## Stack técnico
+
+### Backend
+
+- PHP 8.2
+- Symfony 7.4
+- Doctrine ORM
+- API Platform
+- LexikJWTAuthenticationBundle
+- Symfony Mailer
+- PhpSpreadsheet
+
+### Frontend
+
+- React 19
+- Vite
+- React Router DOM 7
+- Axios
+- Tailwind CSS
+- Recharts
+
+### Infraestructura
+
+- Docker Compose
+- Apache
+- MariaDB/MySQL
+
+## Estructura del proyecto
 
 ```text
 .
-├── src/                 # Backend Symfony
-│   ├── Command/         # Comandos CLI
-│   ├── Controller/      # Endpoints HTTP
-│   ├── Entity/          # Entidades Doctrine
-│   ├── Repository/      # Repositorios
-│   └── Service/         # Lógica de negocio
-├── frontend/            # Frontend React/Vite
-│   ├── src/
-│   └── public/
-├── config/              # Configuración Symfony
-├── public/              # Front controller y build del frontend
-├── templates/           # Plantillas Twig
-├── docker/              # Dockerfiles y vhosts
-└── tests/
+├── src/                  # Backend Symfony: controladores, entidades, servicios y comandos
+├── config/               # Configuración de Symfony, seguridad, Doctrine y bundles
+├── frontend/             # Aplicación React/Vite
+├── public/               # Punto de entrada HTTP y builds estáticos
+├── docker/               # Dockerfile y vhosts de Apache
+├── scripts/              # Scripts auxiliares de build/export
+├── templates/            # Plantillas Twig
+├── tests/                # Tests backend
+├── docker-compose.dev.yml
+├── docker-compose.prod.yml
+├── build-frontend.sh
+└── Makefile
 ```
 
 ## Requisitos
 
-- PHP 8.2 o superior
+- PHP 8.2+
 - Composer
-- Node.js 20 o superior
+- Node.js 20+
 - npm
-- MariaDB/MySQL accesible desde `DATABASE_URL`
-- Docker y Docker Compose si vas a levantar el proyecto en contenedores
+- MariaDB/MySQL
+- Docker y Docker Compose si vas a ejecutar en contenedores
 
 ## Configuración
 
-El proyecto incluye esta base en `.env`:
+El proyecto usa `.env` como base y admite overrides con `.env.local`.
 
-```dotenv
-DATABASE_URL="mysql://root:kubiadmin@mariadb:3306/inventory?serverVersion=10.6"
-```
+Variables relevantes:
 
-Si trabajas fuera de Docker:
+- `APP_ENV`
+- `APP_SECRET`
+- `DATABASE_URL`
+- `MAILER_DSN`
+- `JWT_SECRET_KEY`
+- `JWT_PUBLIC_KEY`
+- `JWT_PASSPHRASE`
+- `CORS_ALLOW_ORIGIN`
+
+Flujo recomendado para entorno local:
 
 ```bash
 cp .env .env.local
 ```
 
-Ajusta en `.env.local` al menos:
+Después ajusta en `.env.local` al menos:
 
-- `DATABASE_URL`
-- configuración JWT si cambias claves o rutas
-- correo/notificaciones si vas a automatizar alertas
+- conexión de base de datos
+- claves JWT
+- correo SMTP si vas a usar alertas por email
 
-## Instalación
+## Instalación local
 
-### Backend
+### 1. Backend
 
 ```bash
 composer install
 php bin/console doctrine:database:create --if-not-exists
+php bin/console doctrine:migrations:migrate
+```
+
+Si no estás usando migraciones o necesitas alinear rápido el esquema:
+
+```bash
 php bin/console doctrine:schema:update --force
 ```
 
-### Frontend
+### 2. Frontend
 
 ```bash
 cd frontend
 npm install
 ```
 
-## Desarrollo
+## Ejecución en desarrollo
 
 ### Backend Symfony
 
@@ -101,7 +136,7 @@ Con Symfony CLI:
 symfony server:start
 ```
 
-O con PHP:
+O con el servidor embebido de PHP:
 
 ```bash
 php -S 127.0.0.1:8000 -t public
@@ -116,9 +151,11 @@ cd frontend
 npm run dev
 ```
 
+El frontend consume la API usando `baseURL: "/api"`, así que en producción funciona detrás del mismo host y en desarrollo depende de la configuración de Vite/proxy o del mismo origen con archivos construidos.
+
 ## Build del frontend
 
-Para compilar y copiar el frontend a `public/`:
+Para compilar el frontend y copiarlo a `public/`:
 
 ```bash
 ./build-frontend.sh
@@ -133,55 +170,88 @@ Ese script:
 
 ## Docker
 
-El `docker-compose.yml` levanta un contenedor `app` con Apache y PHP y expone la aplicación en el puerto `8000`.
+El proyecto incluye dos composiciones:
+
+- `docker-compose.dev.yml`
+- `docker-compose.prod.yml`
+
+Ambas esperan una red Docker externa llamada `h3_net`.
+
+### Desarrollo con Docker
 
 ```bash
 docker network create h3_net
-docker compose up --build
+docker compose -f docker-compose.dev.yml up --build
 ```
 
-Notas:
+Detalles:
 
-- El compose espera una red externa llamada `h3_net`
-- El contenedor monta el proyecto en `/var/www`
-- La aplicación usa el host `mariadb` en `DATABASE_URL`, por lo que esa base debe existir y ser accesible desde la red Docker
+- contenedor: `inventory_app_dev`
+- puerto publicado: `8480:80`
+- volumen montado: `.:/var/www`
+- build con `APACHE_ENV=dev` y `APP_ENV=dev`
 
-## Autenticación
+### Producción con Docker
 
-Login:
+El `docker-compose.prod.yml` no construye la imagen; usa `inventory_app:latest`. La imagen se genera con el script de exportación:
 
-```http
-POST /api/login
-Content-Type: application/json
+```bash
+./scripts/build_and_export.sh prod
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-Body:
+Detalles:
 
-```json
-{
-  "email": "admin@example.com",
-  "password": "secret"
-}
+- contenedor: `inventory_app_prod`
+- puerto publicado: `8480:80`
+- imagen esperada: `inventory_app:latest`
+
+## Scripts y Makefile
+
+### Makefile
+
+```bash
+make dev
+make dev-logs
+make dev-down
+make prod
 ```
 
-Respuesta:
+### `scripts/build_and_export.sh`
 
-```json
-{
-  "token": "jwt-token"
-}
+Acepta `dev` o `prod`:
+
+```bash
+./scripts/build_and_export.sh dev
+./scripts/build_and_export.sh prod
 ```
 
-El frontend usa `axios` con interceptores para:
+Comportamiento:
 
-- añadir `Authorization: Bearer <token>`
-- limpiar el token y redirigir a `/login` cuando el backend responde `401`
+- `dev`: levanta `docker-compose.dev.yml`
+- `prod`:
+  - limpia `public/build`
+  - compila el frontend
+  - copia `frontend/dist/*` a `public/build/`
+  - construye la imagen Docker
+  - exporta la imagen a un archivo `inventory_app_YYYYMMDD_HHMM.tar.gz`
 
-## Endpoints principales
+## API y seguridad
 
-Todas las rutas `/api` requieren autenticación, excepto `/api/login`. Las rutas de importación HTTP requieren `ROLE_ADMIN`.
+Reglas principales de seguridad:
 
-### Productos
+- `POST /api/login` es público
+- `/api/import*` requiere `ROLE_ADMIN`
+- el resto de `/api` requiere autenticación JWT
+- el firewall API es stateless
+
+### Endpoints principales
+
+#### Autenticación
+
+- `POST /api/login`
+
+#### Productos
 
 - `GET /api/products`
 - `GET /api/products/{id}`
@@ -194,23 +264,24 @@ Filtros disponibles en `GET /api/products`:
 - `name=<texto>`
 - `page=<n>`
 
-La respuesta del listado incluye:
+La respuesta incluye:
 
 - `data`
 - `total`
 - `page`
 - `limit`
 
-### Dashboard
+#### Dashboard
 
 - `GET /api/dashboard`
 
-### Proveedores
+#### Proveedores
 
 - `GET /api/providers`
-- `GET /api/providers/{id}`
 
-### Importaciones
+La entidad `Provider` también está expuesta por API Platform, por lo que existen endpoints REST automáticos adicionales según la configuración del bundle.
+
+#### Importaciones
 
 - `POST /api/import/purchases`
 - `POST /api/import/sales`
@@ -218,18 +289,19 @@ La respuesta del listado incluye:
 `/api/import/purchases` acepta:
 
 - archivo en el campo `file`
-- modo opcional `mode` con valores `strict` o `create`
+- `mode` opcional: `strict` o `create`
 
 `/api/import/sales` acepta:
 
 - archivo en el campo `file`
 
-### Alertas
+#### Alertas
 
 - `GET /api/alerts`
 - `GET /api/alerts/details?type=<tipo>`
+- `GET /api/alerts/summary`
 
-Tipos observados en el sistema:
+Tipos observados:
 
 - `low_stock`
 - `warning`
@@ -237,17 +309,19 @@ Tipos observados en el sistema:
 - `valija_low`
 - `valija_critical`
 
-### Valijas
+#### Valijas
 
 - `GET /api/valijas`
+- `POST /api/valijas`
 - `GET /api/valijas/{id}`
+- `DELETE /api/valijas/{id}`
 - `POST /api/valijas/{id}/products`
 - `PUT /api/valijas/products/{id}`
 - `DELETE /api/valijas/products/{id}`
 - `POST /api/valijas/{id}/sync`
 - `POST /api/valijas/sync`
 
-`POST /api/valijas/{id}/products` acepta:
+Ejemplo de alta de producto en valija:
 
 ```json
 {
@@ -256,82 +330,94 @@ Tipos observados en el sistema:
 }
 ```
 
-## Comandos útiles
+#### Presupuestos
+
+- `POST /api/budgets`
+- `GET /api/budgets`
+- `GET /api/budgets/{id}`
+- `PUT /api/budgets/{id}`
+- `DELETE /api/budgets/{id}`
+- `GET /api/budgets/{id}/export/excel`
+
+Estas rutas están protegidas con `ROLE_ADMIN`.
+
+#### Usuarios
+
+- `POST /api/users`
+
+También requiere `ROLE_ADMIN`.
+
+## Frontend
+
+Rutas visibles en la SPA:
+
+- `/login`
+- `/`
+- `/products/:id`
+- `/providers/:id`
+- `/dashboard`
+- `/import`
+- `/valijas`
+- `/valijas/:id`
+- `/alerts`
+- `/budgets`
+- `/budgets/new`
+- `/budgets/:id`
+- `/users/new`
+
+Comportamiento relevante:
+
+- el token JWT se guarda en `localStorage`
+- Axios añade automáticamente `Authorization: Bearer <token>`
+- si la API responde `401`, el frontend elimina el token y redirige a `/login`
+- las rutas administrativas se protegen en cliente con `ROLE_ADMIN`
+
+## Comandos Symfony útiles
 
 ### Usuarios
 
-Crear usuario normal:
-
 ```bash
 php bin/console app:create:user user@example.com secret
-```
-
-Crear administrador:
-
-```bash
 php bin/console app:create:user admin@example.com secret --admin
 ```
 
 ### Importaciones
 
-Importar compras:
-
 ```bash
 php bin/console app:import:purchases /ruta/archivo.csv create
-```
-
-Importar ventas:
-
-```bash
+php bin/console app:import:purchases /ruta/archivo.csv strict
 php bin/console app:import:sales /ruta/ventas.csv
-```
-
-Importar inventario desde Excel:
-
-```bash
 php bin/console app:import:inventory-xlsx /ruta/inventario.xlsx
-```
-
-Indicando la hoja:
-
-```bash
 php bin/console app:import:inventory-xlsx /ruta/inventario.xlsx "costos-venta detallado"
 ```
 
-### Stock y alertas
-
-Revisar inventario:
+### Inventario y valijas
 
 ```bash
 php bin/console app:inventory:check
-```
-
-Sincronizar valijas:
-
-```bash
 php bin/console app:valija:sync
 ```
 
 ## Importación de datos
 
-### Compras y ventas
+### CSV
 
-Las importaciones HTTP y CLI reutilizan servicios dedicados:
+Las importaciones HTTP y CLI reutilizan:
 
 - `App\Service\PurchaseCsvImporter`
 - `App\Service\SalesCsvImporter`
 
-### Inventario XLSX
+### XLSX
 
 El comando `app:import:inventory-xlsx`:
 
 - detecta la fila de cabecera buscando `CODIGO`
-- normaliza nombres de columnas
+- normaliza cabeceras del archivo
 - crea o reutiliza proveedores, categorías y productos
-- registra histórico de costos
-- sincroniza lotes con stock y fecha de vencimiento
+- registra históricos de costo
+- reemplaza lotes previos del producto cuando importa stock nuevo
 
-Columnas relevantes detectadas por el importador:
+Columnas relevantes detectadas:
 
 - `CODIGO`
 - `PRODUCTO`
@@ -345,52 +431,23 @@ Columnas relevantes detectadas por el importador:
 - `EXISTENCIA`
 - `FECHA_VENCIMIENTO`
 
-## Frontend
+## Tests y comprobaciones
 
-Rutas principales:
-
-- `/login`
-- `/`
-- `/dashboard`
-- `/import`
-- `/alerts`
-- `/valijas`
-- `/valijas/:id`
-- `/products/:id`
-- `/providers/:id`
-
-Comportamiento relevante:
-
-- las rutas privadas usan un layout protegido por token
-- el header muestra contadores de alertas con polling cada 30 segundos
-- la vista de alertas permite sincronizar todas las valijas desde la UI
-- la vista de detalle de valija permite añadir productos, editar mínimos y sincronizar la valija individualmente
-
-## Seguridad
-
-Resumen de `config/packages/security.yaml`:
-
-- `/api/login` es público
-- `/api/import*` requiere `ROLE_ADMIN`
-- el resto de `/api` requiere `IS_AUTHENTICATED_FULLY`
-- el firewall API es stateless y usa JWT
-
-## Tests y checks
-
-Tests backend:
+Backend:
 
 ```bash
 php bin/phpunit
 ```
 
-Lint frontend:
+Frontend:
 
 ```bash
 cd frontend
 npm run lint
 ```
 
-## Notas
+## Observaciones
 
-- El árbol del proyecto contiene también archivos generados en `public/assets` y cachés en `var/`
-- Si vas a desplegar sin Vite en desarrollo, recuerda regenerar `public/` con `./build-frontend.sh`
+- El repositorio incluye builds generados dentro de `public/` y `frontend/public/assets/`
+- También hay un artefacto exportado de Docker: `inventory_app_20260513_1552.tar.gz`
+- Existe un `SendAlertsCommand`, pero actualmente comparte el mismo nombre de comando Symfony que `InventoryCheckCommand`; conviene corregirlo antes de documentar un comando separado para envío de alertas

@@ -1,25 +1,42 @@
-
-###> symfony/framework-bundle ###
-/.env.local
-/.env.local.php
-/.env.*.local
-/.vscode/
-/config/secrets/prod/prod.decrypt.private.php
-/public/bundles/
+# =========================
+# Symfony
+# =========================
 /var/
 /vendor/
-###< symfony/framework-bundle ###
 
-###> phpunit/phpunit ###
-/phpunit.xml
-/.phpunit.cache/
-###< phpunit/phpunit ###
+# =========================
+# Frontend
+# =========================
+/node_modules/
+/frontend/node_modules/
+/frontend/dist/
+/public/build/
 
-###> symfony/asset-mapper ###
-/public/assets/
-/assets/vendor/
-###< symfony/asset-mapper ###
+# =========================
+# Environment
+# =========================
+.env.local
+.env.*.local
 
-###> lexik/jwt-authentication-bundle ###
-/config/jwt/*.pem
-###< lexik/jwt-authentication-bundle ###
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Docker
+# =========================
+*.tar
+*.tar.gz
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+.vscode/
+.idea/
+
+# =========================
+# Git
+# =========================
+.git/
