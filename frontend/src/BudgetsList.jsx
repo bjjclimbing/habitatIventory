@@ -6,38 +6,60 @@ export default function BudgetsList() {
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // 🔥 NUEVOS ESTADOS
+  const [search, setSearch] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  // =========================
+  // DOWNLOAD EXCEL
+  // =========================
   const downloadExcel = async (id) => {
     try {
       const res = await api.get(`/budgets/${id}/export/excel`, {
         responseType: "blob"
       });
-  
+
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
-  
+
       link.href = url;
       link.setAttribute("download", `budget_${id}.xlsx`);
-  
+
       document.body.appendChild(link);
       link.click();
       link.remove();
-  
+
     } catch (e) {
       console.error(e);
       alert("Error descargando Excel");
     }
   };
-  useEffect(() => {
-    load();
-  }, []);
 
+  // =========================
+  // LOAD
+  // =========================
   const load = async () => {
     try {
-      const res = await api.get("/budgets");
+      setLoading(true);
+
+      let url = "/budgets";
+
+      const params = [];
+
+      if (search) params.push(`search=${search}`);
+      if (from) params.push(`from=${from}`);
+      if (to) params.push(`to=${to}`);
+
+      if (params.length) {
+        url += "?" + params.join("&");
+      }
+
+      const res = await api.get(url);
 
       console.log("BUDGETS RESPONSE:", res.data);
 
-      // 🔥 normalización segura SIEMPRE
+      // 🔥 normalización segura
       const data =
         res.data?.data ||
         res.data?.budgets ||
@@ -45,6 +67,7 @@ export default function BudgetsList() {
         [];
 
       setBudgets(Array.isArray(data) ? data : []);
+
     } catch (e) {
       console.error("Error loading budgets", e);
       setBudgets([]);
@@ -52,6 +75,17 @@ export default function BudgetsList() {
       setLoading(false);
     }
   };
+
+  // =========================
+  // DEBOUNCE FILTERS
+  // =========================
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      load();
+    }, 300);
+
+    return () => clearTimeout(delay);
+  }, [search, from, to]);
 
   // =========================
   // RENDER
@@ -78,6 +112,39 @@ export default function BudgetsList() {
         </Link>
       </div>
 
+      {/* 🔥 FILTROS NUEVOS */}
+      <div className="mb-6 flex gap-3">
+
+        {/* SEARCH */}
+        <input
+          placeholder="🔍 Buscar presupuesto..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border rounded-lg px-4 py-2 w-full"
+        />
+
+<div className="flex flex-col">
+  <label className="text-xs text-gray-500 mb-1">Desde</label>
+  <input
+    type="date"
+    value={from}
+    onChange={(e) => setFrom(e.target.value)}
+    className="border rounded-lg px-3 py-2"
+  />
+</div>
+
+<div className="flex flex-col">
+  <label className="text-xs text-gray-500 mb-1">Hasta</label>
+  <input
+    type="date"
+    value={to}
+    onChange={(e) => setTo(e.target.value)}
+    className="border rounded-lg px-3 py-2"
+  />
+</div>
+
+      </div>
+
       {/* LOADING */}
       {loading && (
         <div className="text-center text-gray-500 py-10">
@@ -88,7 +155,7 @@ export default function BudgetsList() {
       {/* EMPTY */}
       {!loading && budgets.length === 0 && (
         <div className="text-center text-gray-500 py-10 bg-white rounded-xl shadow">
-          No hay presupuestos aún
+          No hay presupuestos
         </div>
       )}
 
@@ -137,11 +204,11 @@ export default function BudgetsList() {
                     </Link>
 
                     <button
-    onClick={() => downloadExcel(b.id)}
-    className="bg-green-600 text-white px-3 py-1 rounded"
-  >
-    Excel
-  </button>
+                      onClick={() => downloadExcel(b.id)}
+                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                    >
+                      Excel
+                    </button>
 
                   </td>
 

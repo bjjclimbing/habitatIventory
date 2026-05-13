@@ -72,39 +72,49 @@ class BudgetController extends AbstractController
     // LIST
     // =========================
     #[Route('/api/budgets', methods: ['GET'])]
-    public function list(): JsonResponse
-    {
-        $budgets = $this->em->getRepository(Budget::class)->findAll();
+public function list(Request $request): JsonResponse
+{
+    $search = $request->query->get('search');
+    $from = $request->query->get('from');
+    $to = $request->query->get('to');
 
-        $data = [];
+    $qb = $this->em->getRepository(Budget::class)
+        ->createQueryBuilder('b')
+        ->orderBy('b.createdAt', 'DESC');
 
-        foreach ($budgets as $b) {
-
-            $items = [];
-
-            foreach ($b->getItems() as $item) {
-                $items[] = [
-                    'id' => $item->getId(),
-                    'product' => [
-                        'id' => $item->getProduct()->getId(),
-                        'name' => $item->getProduct()->getName(),
-                    ],
-                    'quantity' => $item->getQuantity(),
-                    'unitPrice' => $item->getUnitPrice(),
-                    'total' => $item->getTotal(),
-                ];
-            }
-
-            $data[] = [
-                'id' => $b->getId(),
-                'name' => $b->getName(),
-                'items' => $items,
-                'total' => array_sum(array_map(fn($i) => $i['total'], $items))
-            ];
-        }
-
-        return $this->json($data);
+    // 🔍 filtro por nombre
+    if ($search) {
+        $qb->andWhere('LOWER(b.name) LIKE :search')
+           ->setParameter('search', '%' . strtolower($search) . '%');
     }
+
+    // 📅 filtro desde fecha
+    if ($from) {
+        $qb->andWhere('b.createdAt >= :from')
+           ->setParameter('from', new \DateTime($from));
+    }
+
+    // 📅 filtro hasta fecha
+    if ($to) {
+        $qb->andWhere('b.createdAt <= :to')
+           ->setParameter('to', new \DateTime($to));
+    }
+
+    $budgets = $qb->getQuery()->getResult();
+
+    $data = [];
+
+    foreach ($budgets as $b) {
+        $data[] = [
+            'id' => $b->getId(),
+            'name' => $b->getName(),
+            'createdAt' => $b->getCreatedAt()->format('Y-m-d H:i:s'),
+            'total' => $b->getTotal()
+        ];
+    }
+
+    return $this->json($data);
+}
 
     // =========================
     // DETAIL
