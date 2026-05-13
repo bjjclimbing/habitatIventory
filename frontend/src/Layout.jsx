@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 
 export default function Layout({ children }) {
+  const { user } = useAuth();
+const isAdmin = user?.roles?.includes("ROLE_ADMIN");
   const { logout } = useAuth();
 
   // =========================
@@ -97,14 +99,16 @@ export default function Layout({ children }) {
           <NavLink to="/valijas" className={navClass}>
             <span>🧳 Maletas</span>
           </NavLink>
-
+          {isAdmin && (
           <NavLink to="/budgets" className={navClass}>
   <span>🧾 Presupuestos</span>
 </NavLink>
-
+          )}
+{isAdmin && (
 <NavLink to="/budgets/new" className={navClass}>
   <span>➕ Nuevo presupuesto</span>
 </NavLink>
+)}
 
           <NavLink to="/dashboard" className={navClass}>
             <span>📊 Dashboard</span>

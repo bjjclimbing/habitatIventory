@@ -20,6 +20,19 @@ import BudgetPage from "./BudgetPage";
 import BudgetsList from "./BudgetsList";
 import BudgetDetail from "./BudgetDetail";
 function PrivateLayout({ children }) {
+  function AdminRoute({ children }) {
+    const { token, user } = useAuth();
+  
+    if (!token) {
+      return <Navigate to="/login" />;
+    }
+  
+    if (!user?.roles?.includes("ROLE_ADMIN")) {
+      return <Navigate to="/" />;
+    }
+  
+    return <Layout>{children}</Layout>;
+  }
   const { token } = useAuth();
 
   if (!token) {
@@ -110,27 +123,27 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route
   path="/budgets"
   element={
-    <PrivateLayout>
+    <AdminRoute>
       <BudgetsList />
-    </PrivateLayout>
+    </AdminRoute>
   }
 />
 
 <Route
   path="/budgets/new"
   element={
-    <PrivateLayout>
+    <AdminRoute>
       <BudgetPage />
-    </PrivateLayout>
+    </AdminRoute>
   }
 />
 
 <Route
   path="/budgets/:id"
   element={
-    <PrivateLayout>
+    <AdminRoute>
       <BudgetPage />
-    </PrivateLayout>
+    </AdminRoute>
   }
 />
         </Routes>

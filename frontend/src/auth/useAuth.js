@@ -13,7 +13,6 @@ export const useAuth = () => {
   const context = useContext(AuthContext);
 
   const user = context.token ? parseJwt(context.token) : null;
-
   return {
     ...context,
     user,
