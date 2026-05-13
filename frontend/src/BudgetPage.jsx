@@ -1,260 +1,256 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import { useParams } from "react-router-dom";
 
 export default function BudgetPage() {
 
-    const { id } = useParams();
+  const [products, setProducts] = useState([]);
+  const [items, setItems] = useState([]);
+  const [name, setName] = useState("Nuevo presupuesto");
+  const [search, setSearch] = useState("");
 
-    const [products, setProducts] = useState([]);
-    const [items, setItems] = useState([]);
-    const [name, setName] = useState("Nuevo presupuesto");
-    const [loading, setLoading] = useState(false);
+  // =========================
+  // LOAD PRODUCTS
+  // =========================
+  useEffect(() => {
+    loadProducts();
+  }, []);
 
-    // =========================
-    // LOAD PRODUCTS (SEARCH)
-    // =========================
-    const loadProducts = async (query = "") => {
-        try {
-            setLoading(true);
+  const loadProducts = async (searchValue = "") => {
+    try {
+      let url = `/products?page=1`;
 
-            const res = await api.get(`/products?name=${query}&limit=20`);
-            setProducts(res.data.data || []);
+      if (searchValue) {
+        url += `&name=${searchValue}`;
+      }
 
-        } catch (e) {
-            console.error("Error loading products", e);
-        } finally {
-            setLoading(false);
-        }
+      const res = await api.get(url);
+
+      setProducts(res.data.data || []);
+
+    } catch (e) {
+      console.error("Error loading products", e);
+    }
+  };
+
+  // =========================
+  // SEARCH (debounce)
+  // =========================
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      loadProducts(search);
+    }, 300);
+
+    return () => clearTimeout(delay);
+  }, [search]);
+
+  // =========================
+  // ADD ITEM
+  // =========================
+  const addItem = () => {
+    setItems([
+      ...items,
+      {
+        productId: "",
+        name: "",
+        quantity: 1,
+        unitPrice: 0
+      }
+    ]);
+  };
+
+  // =========================
+  // REMOVE ITEM
+  // =========================
+  const removeItem = (index) => {
+    const updated = [...items];
+    updated.splice(index, 1);
+    setItems(updated);
+  };
+
+  // =========================
+  // SELECT PRODUCT
+  // =========================
+  const handleSelectProduct = (productId, index) => {
+
+    const product = products.find(p => p.id === parseInt(productId));
+
+    if (!product) return;
+
+    const updated = [...items];
+
+    updated[index] = {
+      ...updated[index],
+      productId: product.id,
+      name: product.name,
+      unitPrice: product.price || 0
     };
 
-    // =========================
-    // LOAD BUDGET (EDIT)
-    // =========================
-    const loadBudget = async () => {
-        try {
-            const res = await api.get(`/budgets/${id}`);
+    setItems(updated);
+  };
 
-            setName(res.data.name);
+  // =========================
+  // QUANTITY
+  // =========================
+  const handleQuantityChange = (value, index) => {
+    const updated = [...items];
+    updated[index].quantity = parseInt(value) || 0;
+    setItems(updated);
+  };
 
-            setItems(
-                res.data.items.map(i => ({
-                    productId: i.product.id,
-                    name: i.product.name,
-                    quantity: i.quantity,
-                    unitPrice: i.unitPrice
-                }))
-            );
+  // =========================
+  // TOTAL
+  // =========================
+  const total = items.reduce(
+    (sum, i) => sum + (i.quantity * i.unitPrice),
+    0
+  );
 
-        } catch (e) {
-            console.error(e);
-        }
-    };
+  // =========================
+  // SAVE
+  // =========================
+  const saveBudget = async () => {
+    try {
 
-    useEffect(() => {
-        if (id) {
-            loadBudget();
-        } else {
-            loadProducts();
-        }
-    }, [id]);
+      await api.post("/budgets", {
+        name,
+        items: items.map(i => ({
+          productId: i.productId,
+          quantity: i.quantity
+        }))
+      });
 
-    // =========================
-    // ADD ITEM
-    // =========================
-    const addItem = () => {
-        setItems([
-            ...items,
-            {
-                productId: "",
-                name: "",
-                quantity: 1,
-                unitPrice: 0
-            }
-        ]);
-    };
+      alert("✅ Presupuesto guardado");
 
-    // =========================
-    // REMOVE ITEM
-    // =========================
-    const removeItem = (index) => {
-        const updated = [...items];
-        updated.splice(index, 1);
-        setItems(updated);
-    };
+    } catch (e) {
+      console.error(e);
+      alert("❌ Error al guardar");
+    }
+  };
 
-    // =========================
-    // CHANGE QTY
-    // =========================
-    const handleQuantityChange = (value, index) => {
-        const updated = [...items];
-        updated[index].quantity = parseInt(value) || 0;
-        setItems(updated);
-    };
+  // =========================
+  // UI
+  // =========================
+  return (
+    <div className="max-w-5xl mx-auto p-6">
 
-    // =========================
-    // TOTAL
-    // =========================
-    const total = items.reduce(
-        (sum, i) => sum + (i.quantity * i.unitPrice),
-        0
-    );
+      {/* HEADER */}
+      <div className="mb-8">
+        <label className="block text-sm text-gray-500 mb-1">
+          Nombre del presupuesto
+        </label>
 
-    // =========================
-    // SAVE
-    // =========================
-    const saveBudget = async () => {
-        try {
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full text-2xl font-semibold border-b border-gray-300 focus:outline-none focus:border-blue-500"
+        />
+      </div>
 
-            const payload = {
-                name,
-                items: items.map(i => ({
-                    productId: i.productId,
-                    quantity: i.quantity
-                }))
-            };
+      {/* SEARCH */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="🔍 Buscar producto por nombre o SKU..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full border rounded-lg px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+        />
+      </div>
 
-            if (id) {
-                await api.put(`/budgets/${id}`, payload);
-            } else {
-                await api.post(`/budgets`, payload);
-            }
+      {/* TABLE */}
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        <table className="w-full text-sm">
 
-            alert("✅ Guardado");
+          <thead className="bg-gray-50 text-gray-600">
+            <tr>
+              <th className="text-left p-4">Producto</th>
+              <th className="text-center">Cantidad</th>
+              <th className="text-right">Precio</th>
+              <th className="text-right">Total</th>
+              <th></th>
+            </tr>
+          </thead>
 
-        } catch (e) {
-            console.error(e);
-            alert("❌ Error");
-        }
-    };
+          <tbody>
+            {items.map((item, index) => (
+              <tr key={index} className="border-t hover:bg-gray-50">
 
-    // =========================
-    // UI
-    // =========================
-    return (
-        <div style={{ padding: 20 }}>
+                {/* PRODUCT */}
+                <td className="p-4">
+                  <select
+                    value={item.productId}
+                    onChange={(e) => handleSelectProduct(e.target.value, index)}
+                    className="w-full border rounded-lg px-3 py-2"
+                  >
+                    <option value="">Seleccionar producto...</option>
 
-            <h2>{id ? "Editar Presupuesto" : "Crear Presupuesto"}</h2>
-
-            <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{ marginBottom: 20, width: 300 }}
-            />
-
-            <table border="1" cellPadding="10" style={{ width: "100%" }}>
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Cantidad</th>
-                        <th>Precio</th>
-                        <th>Total</th>
-                        <th></th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {items.map((item, index) => (
-
-                        <tr key={index}>
-
-                            {/* 🔥 AUTOCOMPLETE */}
-                            <td style={{ position: "relative" }}>
-
-                                <input
-                                    placeholder="Buscar producto..."
-                                    value={item.name}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-
-                                        const updated = [...items];
-                                        updated[index].name = value;
-                                        updated[index].productId = "";
-                                        updated[index].unitPrice = 0;
-
-                                        setItems(updated);
-                                        loadProducts(value);
-                                    }}
-                                    style={{ width: "250px" }}
-                                />
-
-                                {/* DROPDOWN */}
-                                {products.length > 0 && item.name && (
-                                    <div style={{
-                                        position: "absolute",
-                                        background: "white",
-                                        border: "1px solid #ccc",
-                                        width: "250px",
-                                        zIndex: 10,
-                                        maxHeight: "200px",
-                                        overflowY: "auto"
-                                    }}>
-                                        {products.map(p => (
-                                            <div
-                                                key={p.id}
-                                                style={{
-                                                    padding: "5px",
-                                                    cursor: "pointer"
-                                                }}
-                                                onClick={() => {
-
-                                                    const updated = [...items];
-
-                                                    updated[index] = {
-                                                        ...updated[index],
-                                                        productId: p.id,
-                                                        name: p.name,
-                                                        unitPrice: p.price || 0
-                                                    };
-
-                                                    setItems(updated);
-                                                    setProducts([]); // cerrar dropdown
-                                                }}
-                                            >
-                                                {p.name} ({p.price ?? 0}€)
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                            </td>
-
-                            <td>
-                                <input
-                                    type="number"
-                                    value={item.quantity}
-                                    onChange={(e) => handleQuantityChange(e.target.value, index)}
-                                    style={{ width: 60 }}
-                                />
-                            </td>
-
-                            <td>
-                                {item.unitPrice.toFixed(2)} €
-                            </td>
-
-                            <td>
-                                {(item.quantity * item.unitPrice).toFixed(2)} €
-                            </td>
-
-                            <td>
-                                <button onClick={() => removeItem(index)}>❌</button>
-                            </td>
-
-                        </tr>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.sku} — {p.name}
+                      </option>
                     ))}
-                </tbody>
-            </table>
+                  </select>
+                </td>
 
-            <br />
+                {/* QTY */}
+                <td className="text-center">
+                  <input
+                    type="number"
+                    value={item.quantity}
+                    onChange={(e) => handleQuantityChange(e.target.value, index)}
+                    className="w-16 text-center border rounded"
+                  />
+                </td>
 
-            <button onClick={addItem}>➕ Añadir producto</button>
+                {/* PRICE */}
+                <td className="text-right pr-4">
+                  {item.unitPrice.toFixed(2)} €
+                </td>
 
-            <h3>Total: {total.toFixed(2)} €</h3>
+                {/* TOTAL */}
+                <td className="text-right pr-4 font-semibold">
+                  {(item.quantity * item.unitPrice).toFixed(2)} €
+                </td>
 
-            <button onClick={saveBudget} style={{ marginTop: 20 }}>
-                💾 Guardar
-            </button>
+                {/* DELETE */}
+                <td className="text-center">
+                  <button
+                    onClick={() => removeItem(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    ✕
+                  </button>
+                </td>
 
+              </tr>
+            ))}
+          </tbody>
+
+        </table>
+      </div>
+
+      {/* ACTIONS */}
+      <div className="mt-4 flex justify-between items-center">
+
+        <button
+          onClick={addItem}
+          className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg"
+        >
+          ➕ Añadir producto
+        </button>
+
+        <div className="text-xl font-semibold">
+          Total: {total.toFixed(2)} €
         </div>
-    );
+      </div>
+
+      <button
+        onClick={saveBudget}
+        className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700"
+      >
+        💾 Guardar Presupuesto
+      </button>
+
+    </div>
+  );
 }
