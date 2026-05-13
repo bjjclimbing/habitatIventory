@@ -139,7 +139,8 @@ export default function App() {
 
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="text-left p-4">Producto</th>
+              <th className="text-left p-4">Producto</th>
+                <th className="text-left p-4">Descripción</th>
                 <th className="text-left">Proveedor</th>
                 <th className="text-center">Stock</th>
               </tr>
@@ -149,20 +150,25 @@ export default function App() {
               {products.map(p => (
                 <tr key={p.id} className="border-t hover:bg-gray-50">
 
-                  <td className="p-4">
+                  {/* SKU */}
+                  <td className="p-4 font-mono text-gray-600">
                     <Link
                       to={`/products/${p.id}`}
                       className="text-blue-600 hover:underline font-medium"
                     >
-                      {p.name}
+                      {p.sku}
                     </Link>
+                  </td>
+                  <td className="p-4">
+                    
+                      {p.name}
                   </td>
 
                   <td>
                     {p.provider ? (
                       <Link
                         to={`/providers/${p.provider.id}`}
-                        className="text-gray-700 hover:text-blue-600 hover:underline"
+                        className="text-blue-600 hover:underline font-medium"
                       >
                         {p.provider.name}
                       </Link>

@@ -44,7 +44,7 @@ public function list(Request $request, EntityManagerInterface $em): JsonResponse
 
     // 🔥 filtro nombre (clave)
     if ($search) {
-        $qb->andWhere('LOWER(p.name) LIKE :search')
+        $qb->andWhere('LOWER(p.name) LIKE :search OR LOWER(p.sku) LIKE :search')
            ->setParameter('search', '%' . strtolower($search) . '%');
     }
 
@@ -72,6 +72,7 @@ public function list(Request $request, EntityManagerInterface $em): JsonResponse
         $data[] = [
             'id' => $p->getId(),
             'name' => $p->getName(),
+            'sku' => $p->getSku(), 
             'stock' => $stock,
             'minStock' => $p->getMinStock(),
             'brand' => $p->getBrand(),
