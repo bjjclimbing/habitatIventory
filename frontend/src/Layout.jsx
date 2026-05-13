@@ -2,7 +2,6 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "./auth/useAuth";
 import { useEffect, useState } from "react";
 import { api } from "./api";
-
 export default function Layout({ children }) {
   const { user } = useAuth();
 const isAdmin = user?.roles?.includes("ROLE_ADMIN");
@@ -114,7 +113,11 @@ const isAdmin = user?.roles?.includes("ROLE_ADMIN");
             <span>📊 Dashboard</span>
           </NavLink>
           
-
+          {isAdmin && (
+  <NavLink to="/users/new" className={navClass}>
+    <span>👤 Usuarios</span>
+  </NavLink>
+)}
         </nav>
 
         {/* =========================
@@ -214,7 +217,7 @@ const isAdmin = user?.roles?.includes("ROLE_ADMIN");
 
         {/* TOP BAR */}
         <div className="flex justify-end items-center mb-6 text-sm text-gray-600">
-          👤 admin@test.com
+          👤  {user?.username || "Usuario"}
         </div>
 
         {children}
