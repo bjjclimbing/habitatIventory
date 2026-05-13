@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "./auth/useAuth";
-
+import Layout from "./Layout";
 export default function AdminRoute({ children }) {
   const { user } = useAuth();
 
@@ -15,5 +15,6 @@ export default function AdminRoute({ children }) {
   }
 
   // ✅ OK
-  return children;
+  return <Layout>{children}</Layout>;
+
 }
