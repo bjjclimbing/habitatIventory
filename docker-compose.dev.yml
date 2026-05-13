@@ -5,11 +5,18 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
-    container_name: inventory_app
+      args:
+        APACHE_ENV: dev
+        APP_ENV: dev
+
+    container_name: inventory_app_dev
+
     volumes:
-      - .:/var/www
+      - .:/var/www   # 🔥 CLAVE DEV
+
     ports:
-      - "8000:80"
+      - "8480:80"
+
     networks:
       - h3_net
 
