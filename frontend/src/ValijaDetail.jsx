@@ -6,8 +6,12 @@ export default function ValijaDetail() {
   const { id } = useParams();
 
   const [valija, setValija] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [newProduct, setNewProduct] = useState("");
+
+  // 🔥 búsqueda productos
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
   const [stockMin, setStockMin] = useState(10);
 
   useEffect(() => {
@@ -18,28 +22,56 @@ export default function ValijaDetail() {
     try {
       const res = await api.get(`/valijas/${id}`);
       setValija(res.data);
-
-      const prodRes = await api.get("/products");
-      setProducts(prodRes.data.data || []);
     } catch (e) {
       console.error(e);
     }
   };
 
+  // =========================
+  // 🔥 BUSCAR PRODUCTOS (igual que Budget)
+  // =========================
+  useEffect(() => {
+    if (search.length < 2) {
+      setResults([]);
+      return;
+    }
+
+    const delay = setTimeout(async () => {
+      try {
+        const res = await api.get(`/products?name=${encodeURIComponent(search)}`);
+
+        setResults(res.data.data || []);
+      } catch (e) {
+        console.error(e);
+      }
+    }, 300);
+
+    return () => clearTimeout(delay);
+
+  }, [search]);
+
+  // =========================
+  // ADD PRODUCT
+  // =========================
   const addProduct = async () => {
-    if (!newProduct) return;
+    if (!selectedProduct) return;
 
     await api.post(`/valijas/${id}/products`, {
-      productId: newProduct,
+      productId: selectedProduct.id,
       stockMin
     });
 
-    setNewProduct("");
+    setSelectedProduct(null);
+    setSearch("");
+    setResults([]);
     setStockMin(10);
 
     load();
   };
 
+  // =========================
+  // UPDATE STOCK
+  // =========================
   const updateStockMin = async (vpId, newValue, oldValue) => {
     const parsed = parseInt(newValue);
 
@@ -57,6 +89,9 @@ export default function ValijaDetail() {
     }
   };
 
+  // =========================
+  // DELETE
+  // =========================
   const deleteProduct = async (vpId) => {
     if (!confirm("¿Eliminar producto de la maleta?")) return;
 
@@ -69,6 +104,9 @@ export default function ValijaDetail() {
     }
   };
 
+  // =========================
+  // SYNC
+  // =========================
   const sync = async () => {
     await api.post(`/valijas/${id}/sync`);
     alert("Maleta sincronizada");
@@ -90,35 +128,60 @@ export default function ValijaDetail() {
         </p>
       </div>
 
-      {/* ADD PRODUCT */}
-      <div className="bg-white p-4 rounded-xl shadow mb-6 flex gap-3 items-center">
-
-        <select
-          value={newProduct}
-          onChange={(e) => setNewProduct(e.target.value)}
-          className="border rounded-lg px-4 py-2 flex-1"
-        >
-          <option value="">Seleccionar producto</option>
-          {products.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+      {/* 🔥 ADD PRODUCT (NUEVO UX) */}
+      <div className="bg-white p-4 rounded-xl shadow mb-6 space-y-3">
 
         <input
-          type="number"
-          value={stockMin}
-          onChange={(e) => setStockMin(e.target.value)}
-          className="border rounded-lg px-4 py-2 w-24"
+          placeholder="🔍 Buscar producto por nombre o SKU..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border rounded-lg px-4 py-2 w-full"
         />
 
-        <button
-          onClick={addProduct}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-        >
-          Añadir
-        </button>
+        {/* RESULTADOS */}
+        {results.length > 0 && (
+          <div className="border rounded-lg max-h-40 overflow-y-auto bg-white">
+            {results.map(p => (
+              <div
+                key={p.id}
+                onClick={() => {
+                  setSelectedProduct(p);
+                  setSearch(p.name);
+                  setResults([]);
+                }}
+                className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+              >
+                {p.name} ({p.sku || "-"})
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* SELECCIONADO */}
+        {selectedProduct && (
+          <div className="text-sm text-green-600">
+            ✔ Seleccionado: {selectedProduct.name}
+          </div>
+        )}
+
+        <div className="flex gap-3">
+
+          <input
+            type="number"
+            value={stockMin}
+            onChange={(e) => setStockMin(e.target.value)}
+            className="border rounded-lg px-4 py-2 w-24"
+          />
+
+          <button
+            onClick={addProduct}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+          >
+            Añadir
+          </button>
+
+        </div>
+
       </div>
 
       {/* TABLE */}
@@ -147,12 +210,10 @@ export default function ValijaDetail() {
             {valija.products?.map(vp => (
               <tr key={vp.id} className="border-t hover:bg-gray-50">
 
-                {/* PRODUCTO */}
                 <td className="p-4 font-medium text-gray-800">
                   {vp.product.name}
                 </td>
 
-                {/* EDITABLE STOCK */}
                 <td className="text-center">
                   <input
                     type="number"
@@ -164,7 +225,6 @@ export default function ValijaDetail() {
                   />
                 </td>
 
-                {/* DELETE */}
                 <td className="text-center">
                   <button
                     onClick={() => deleteProduct(vp.id)}
