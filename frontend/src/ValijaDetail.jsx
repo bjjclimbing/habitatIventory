@@ -38,7 +38,7 @@ export default function ValijaDetail() {
 
     const delay = setTimeout(async () => {
       try {
-        const res = await api.get(`/products?name=${encodeURIComponent(search)}`);
+        const res = await api.get(`/products?name=${encodeURIComponent(search)}`) ;
 
         setResults(res.data.data || []);
       } catch (e) {
