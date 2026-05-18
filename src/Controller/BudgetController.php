@@ -32,41 +32,93 @@ class BudgetController extends AbstractController
         $this->em = $em;
     }
 
-    // =========================
-    // CREATE
-    // =========================
-    #[Route('/api/budgets', methods: ['POST'])]
-    public function create(Request $request): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
 
-        $budget = new Budget();
-        $budget->setName($data['name'] ?? 'Presupuesto');
+// =========================
+// CREATE
+// =========================
+#[Route('/api/budgets', methods: ['POST'])]
+public function create(Request $request): JsonResponse
+{
+    $data = json_decode($request->getContent(), true);
 
-        foreach ($data['items'] ?? [] as $i) {
+    $budget = new Budget();
 
-            $product = $this->productRepo->find($i['productId']);
-            if (!$product) continue;
+    $budget->setName(
+        $data['name'] ?? 'Presupuesto'
+    );
 
-            $lastCost = $this->productCostRepo->findLastCostByProduct($product);
-            $price = $lastCost?->getTotalCost() ?? 0;
+    foreach ($data['items'] ?? [] as $i) {
 
-            $item = new BudgetItem();
-            $item->setProduct($product);
-            $item->setQuantity($i['quantity']);
-            $item->setUnitPrice($price);
-            $item->calculateTotal();
+        $product = $this->productRepo->find(
+            $i['productId']
+        );
 
-            $budget->addItem($item);
+        if (!$product) {
+            continue;
         }
 
-        $this->em->persist($budget);
-        $this->em->flush();
+        //
+        // PRECIO ORIGINAL
+        //
+        $lastCost = $this->productCostRepo
+            ->findLastCostByProduct($product);
 
-        return $this->json([
-            'id' => $budget->getId()
-        ]);
+        $originalPrice =
+            $lastCost?->getTotalCost() ?? 0;
+
+        //
+        // ITEM
+        //
+        $item = new BudgetItem();
+
+        $item->setProduct($product);
+
+        $item->setQuantity(
+            $i['quantity']
+        );
+
+        //
+        // GUARDAR PRECIO ORIGINAL
+        //
+        $item->setUnitPrice(
+            $originalPrice
+        );
+
+        //
+        // PRECIO PERSONALIZADO
+        // (siempre guardar el enviado desde frontend)
+        //
+        $postedPrice = (float) (
+            $i['unitPrice'] ?? $originalPrice
+        );
+
+        $item->setCustomUnitPrice(
+            $postedPrice
+        );
+
+        //
+        // MOTIVO OPCIONAL
+        //
+        $item->setPriceModificationReason(
+            $i['priceModificationReason'] ?? null
+        );
+
+        //
+        // TOTAL
+        //
+        $item->calculateTotal();
+
+        $budget->addItem($item);
     }
+
+    $this->em->persist($budget);
+
+    $this->em->flush();
+
+    return $this->json([
+        'id' => $budget->getId()
+    ]);
+}
 
     // =========================
     // LIST
@@ -109,7 +161,8 @@ public function list(Request $request): JsonResponse
             'id' => $b->getId(),
             'name' => $b->getName(),
             'createdAt' => $b->getCreatedAt()->format('Y-m-d H:i:s'),
-            'total' => $b->getTotal()
+            'total' => $b->getTotal(),
+            'itemsCount' => $b->getItems()->count(),
         ];
     }
 
@@ -132,7 +185,10 @@ public function detail(Budget $budget): JsonResponse
                 'name' => $item->getProduct()->getName(),
             ],
             'quantity' => $item->getQuantity(),
-            'unitPrice' => $item->getUnitPrice(), // 🔥 CLAVE
+            'unitPrice' => $item->getEffectiveUnitPrice(),
+'originalUnitPrice' => $item->getUnitPrice(),
+'customUnitPrice' => $item->getCustomUnitPrice(),
+'priceModificationReason' => $item->getPriceModificationReason(),
             'total' => $item->getTotal(),
         ];
     }
@@ -147,39 +203,103 @@ public function detail(Budget $budget): JsonResponse
     // =========================
     // UPDATE
     // =========================
-    #[Route('/api/budgets/{id}', methods: ['PUT'])]
-    public function update(Request $request, Budget $budget): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
+    // =========================
+// UPDATE
+// =========================
+#[Route('/api/budgets/{id}', methods: ['PUT'])]
+public function update(
+    Request $request,
+    Budget $budget
+): JsonResponse
+{
+    $data = json_decode(
+        $request->getContent(),
+        true
+    );
 
-        $budget->setName($data['name'] ?? $budget->getName());
+    $budget->setName(
+        $data['name'] ?? $budget->getName()
+    );
 
-        // 🔥 limpiar items actuales
-        foreach ($budget->getItems() as $item) {
-            $this->em->remove($item);
-        }
-
-        // 🔥 recrear items
-        foreach ($data['items'] ?? [] as $i) {
-
-            $product = $this->productRepo->find($i['productId']);
-            if (!$product) continue;
-
-            $lastCost = $this->productCostRepo->findLastCostByProduct($product);
-            $price = $lastCost?->getTotalCost() ?? 0;
-
-            $item = new BudgetItem();
-            $item->setProduct($product);
-            $item->setQuantity($i['quantity']);
-            $item->setUnitPrice($price);
-
-            $budget->addItem($item);
-        }
-
-        $this->em->flush();
-
-        return $this->json(['status' => 'updated']);
+    //
+    // LIMPIAR ITEMS ACTUALES
+    //
+    foreach ($budget->getItems() as $item) {
+        $this->em->remove($item);
     }
+
+    //
+    // RECREAR ITEMS
+    //
+    foreach ($data['items'] ?? [] as $i) {
+
+        $product = $this->productRepo->find(
+            $i['productId']
+        );
+
+        if (!$product) {
+            continue;
+        }
+
+        //
+        // PRECIO ORIGINAL
+        //
+        $lastCost = $this->productCostRepo
+            ->findLastCostByProduct($product);
+
+        $originalPrice =
+            $lastCost?->getTotalCost() ?? 0;
+
+        //
+        // ITEM
+        //
+        $item = new BudgetItem();
+
+        $item->setProduct($product);
+
+        $item->setQuantity(
+            $i['quantity']
+        );
+
+        //
+        // GUARDAR PRECIO ORIGINAL
+        //
+        $item->setUnitPrice(
+            $originalPrice
+        );
+
+        //
+        // PRECIO PERSONALIZADO
+        //
+        $postedPrice = (float) (
+            $i['unitPrice'] ?? $originalPrice
+        );
+
+        $item->setCustomUnitPrice(
+            $postedPrice
+        );
+
+        //
+        // MOTIVO
+        //
+        $item->setPriceModificationReason(
+            $i['priceModificationReason'] ?? null
+        );
+
+        //
+        // TOTAL
+        //
+        $item->calculateTotal();
+
+        $budget->addItem($item);
+    }
+
+    $this->em->flush();
+
+    return $this->json([
+        'status' => 'updated'
+    ]);
+}
 
     // =========================
     // EXPORT EXCEL
@@ -233,20 +353,25 @@ public function exportExcel(Budget $budget): Response
 
     foreach ($budget->getItems() as $item) {
 
-        $sheet->setCellValue("A$row", $item->getProduct()->getSku()); // REF
+        $sheet->setCellValue("A$row", $item->getProduct()->getSku());
+    
         $sheet->setCellValue("B$row", $item->getProduct()->getName());
-
+    
         $sheet->mergeCells("B$row:E$row");
-
+    
         $sheet->setCellValue("F$row", $item->getQuantity());
-        $sheet->setCellValue("G$row", $item->getUnitPrice());
+    
+        // ✅ usar precio efectivo (personalizado o normal)
+        $sheet->setCellValue("G$row", $item->getEffectiveUnitPrice());
+    
+        // ✅ total recalculado usando el precio efectivo
         $sheet->setCellValue("H$row", $item->getTotal());
-
-        // formato €
+    
+        // formato numérico
         $sheet->getStyle("G$row:H$row")
             ->getNumberFormat()
             ->setFormatCode('#,##0.00');
-
+    
         $row++;
     }
 

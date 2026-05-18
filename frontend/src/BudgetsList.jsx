@@ -185,7 +185,7 @@ export default function BudgetsList() {
 
                   {/* ITEMS COUNT */}
                   <td className="text-center">
-                    {b.items?.length || 0}
+                    {b.itemsCount || 0}
                   </td>
 
                   {/* TOTAL */}

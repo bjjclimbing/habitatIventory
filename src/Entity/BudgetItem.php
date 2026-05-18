@@ -5,6 +5,7 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
+#[ORM\Table(name: "budget_item")]
 #[ORM\HasLifecycleCallbacks]
 class BudgetItem
 {
@@ -13,7 +14,10 @@ class BudgetItem
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Budget::class, inversedBy: 'items')]
+    #[ORM\ManyToOne(
+        targetEntity: Budget::class,
+        inversedBy: 'items'
+    )]
     #[ORM\JoinColumn(nullable: false)]
     private ?Budget $budget = null;
 
@@ -23,18 +27,50 @@ class BudgetItem
     #[ORM\Column]
     private int $quantity;
 
+    /**
+     * Precio original histórico
+     */
     #[ORM\Column(type: "float")]
     private float $unitPrice;
+
+    /**
+     * Precio realmente usado
+     * en el presupuesto
+     */
+    #[ORM\Column(type: "float", nullable: true)]
+    private ?float $customUnitPrice = null;
+
+    /**
+     * Motivo opcional
+     * del cambio de precio
+     */
+    #[ORM\Column(
+        type: "string",
+        length: 255,
+        nullable: true
+    )]
+    private ?string $priceModificationReason = null;
 
     #[ORM\Column(type: "float")]
     private float $total;
 
-    public function calculateTotal(): void
+    /**
+     * Precio efectivo usado
+     * en cálculos/exportaciones
+     */
+    public function getEffectiveUnitPrice(): float
     {
-        $this->total = $this->quantity * $this->unitPrice;
+        return $this->customUnitPrice
+            ?? $this->unitPrice;
     }
 
-    // ✅ AUTO CALCULO
+    public function calculateTotal(): void
+    {
+        $this->total =
+            $this->quantity *
+            $this->getEffectiveUnitPrice();
+    }
+
     #[ORM\PrePersist]
     #[ORM\PreUpdate]
     public function updateTotal(): void
@@ -42,39 +78,105 @@ class BudgetItem
         $this->calculateTotal();
     }
 
-    public function getId(): ?int { return $this->id; }
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
 
-    public function getBudget(): ?Budget { return $this->budget; }
+    public function getBudget(): ?Budget
+    {
+        return $this->budget;
+    }
 
-    public function setBudget(?Budget $budget): self
+    public function setBudget(
+        ?Budget $budget
+    ): self
     {
         $this->budget = $budget;
+
         return $this;
     }
 
-    public function getProduct(): Product { return $this->product; }
+    public function getProduct(): Product
+    {
+        return $this->product;
+    }
 
-    public function setProduct(Product $product): self
+    public function setProduct(
+        Product $product
+    ): self
     {
         $this->product = $product;
+
         return $this;
     }
 
-    public function getQuantity(): int { return $this->quantity; }
+    public function getQuantity(): int
+    {
+        return $this->quantity;
+    }
 
-    public function setQuantity(int $quantity): self
+    public function setQuantity(
+        int $quantity
+    ): self
     {
         $this->quantity = $quantity;
+
         return $this;
     }
 
-    public function getUnitPrice(): float { return $this->unitPrice; }
+    /**
+     * Precio original histórico
+     */
+    public function getUnitPrice(): float
+    {
+        return $this->unitPrice;
+    }
 
-    public function setUnitPrice(float $unitPrice): self
+    public function setUnitPrice(
+        float $unitPrice
+    ): self
     {
         $this->unitPrice = $unitPrice;
+
         return $this;
     }
 
-    public function getTotal(): float { return $this->total; }
+    /**
+     * Precio personalizado
+     */
+    public function getCustomUnitPrice(): ?float
+    {
+        return $this->customUnitPrice;
+    }
+
+    public function setCustomUnitPrice(
+        ?float $customUnitPrice
+    ): self
+    {
+        $this->customUnitPrice =
+            $customUnitPrice;
+
+        return $this;
+    }
+
+    public function getPriceModificationReason(): ?string
+    {
+        return $this->priceModificationReason;
+    }
+
+    public function setPriceModificationReason(
+        ?string $priceModificationReason
+    ): self
+    {
+        $this->priceModificationReason =
+            $priceModificationReason;
+
+        return $this;
+    }
+
+    public function getTotal(): float
+    {
+        return $this->total;
+    }
 }
