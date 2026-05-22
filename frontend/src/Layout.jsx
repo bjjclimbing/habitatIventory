@@ -117,6 +117,12 @@ const isAdmin = user?.roles?.includes("ROLE_ADMIN");
   <NavLink to="/users/new" className={navClass}>
     <span>👤 Usuarios</span>
   </NavLink>
+  
+)}
+{isAdmin && (
+  <NavLink to="/clients" className={navClass}>
+    <span>🏢 Clientes</span>
+  </NavLink>
 )}
         </nav>
 

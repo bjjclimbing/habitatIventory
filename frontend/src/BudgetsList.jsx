@@ -35,6 +35,46 @@ export default function BudgetsList() {
       alert("Error descargando Excel");
     }
   };
+  const downloadPdf = async (id) => {
+    try {
+      const res = await api.get(`/budgets/${id}/export/pdf`, {
+        responseType: "blob"
+      });
+  
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+  
+      link.href = url;
+      link.setAttribute("download", `budget_${id}.pdf`);
+  
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+  
+    } catch (e) {
+      console.error(e);
+      alert("Error descargando PDF");
+    }
+  };
+  const API_URL = import.meta.env.VITE_API_URL;
+  const openPdf = async (id) => {
+    try {
+      const logoUrl = `/api/logo`;
+  
+      const res = await api.get(
+        `/budgets/${id}/export/pdf?logo=${logoUrl}`,
+        { responseType: "blob" }
+      );
+  
+      const file = new Blob([res.data], { type: "application/pdf" });
+      const fileURL = URL.createObjectURL(file);
+  
+      window.open(fileURL);
+  
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // =========================
   // LOAD
@@ -194,23 +234,34 @@ export default function BudgetsList() {
                   </td>
 
                   {/* ACTIONS */}
-                  <td className="p-4 text-right space-x-2">
+                  <td className="p-4 text-right">
 
-                    <Link
-                      to={`/budgets/${b.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Ver
-                    </Link>
+  <div className="flex justify-end gap-2">
 
-                    <button
-                      onClick={() => downloadExcel(b.id)}
-                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                    >
-                      Excel
-                    </button>
+    <Link
+      to={`/budgets/${b.id}`}
+      className="text-blue-600 hover:underline text-sm"
+    >
+      Ver
+    </Link>
 
-                  </td>
+    <button
+      onClick={() => downloadExcel(b.id)}
+      className="bg-green-600 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-700"
+    >
+      📊 Excel
+    </button>
+
+    <button
+  onClick={() => openPdf(b.id)}
+  className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-700"
+>
+  📄 PDF
+</button>
+
+  </div>
+
+</td>
 
                 </tr>
               ))}

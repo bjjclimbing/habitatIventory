@@ -29,6 +29,10 @@ class Budget
     )]
     private Collection $items;
 
+    #[ORM\ManyToOne(targetEntity: Client::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Client $client = null;
+
     public function __construct()
     {
         $this->items = new ArrayCollection();
@@ -95,5 +99,14 @@ class Budget
     public function getCreatedAt(): \DateTime
     {
         return $this->createdAt;
+    }
+    public function getClient(): ?Client
+    {
+        return $this->client;
+    }
+    public function setClient(?Client $client): self
+    {
+        $this->client = $client;
+        return $this;
     }
 }

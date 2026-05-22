@@ -21,6 +21,8 @@ import BudgetsList from "./BudgetsList";
 import BudgetDetail from "./BudgetDetail";
 import UserCreatePage from "./UserCreatePage";
 import AdminRoute from "./AdminRoute";
+import ClientPage from "./ClientPage";
+
 function PrivateLayout({ children }) {
   function AdminRoute({ children }) {
     const { token, user } = useAuth();
@@ -156,6 +158,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </AdminRoute>
   }
 />
+<Route
+  path="/clients"
+  element={
+    <Layout>
+      <ClientPage />
+    </Layout>
+  }/>
         </Routes>
       </BrowserRouter>
     </AuthProvider>

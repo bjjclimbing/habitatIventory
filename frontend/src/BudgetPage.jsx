@@ -7,6 +7,10 @@ export default function BudgetPage() {
   const { id } = useParams();
 
   const [products, setProducts] = useState([]);
+  const [clients, setClients] = useState([]);
+
+  const [clientId, setClientId] = useState("");
+
   const [items, setItems] = useState([]);
   const [name, setName] = useState("Nuevo presupuesto");
   const [search, setSearch] = useState("");
@@ -16,6 +20,7 @@ export default function BudgetPage() {
   // =========================
   useEffect(() => {
     loadProducts();
+    loadClients();
   }, []);
 
   const loadProducts = async (searchValue = "") => {
@@ -35,6 +40,18 @@ export default function BudgetPage() {
   };
 
   // =========================
+  // LOAD CLIENTS
+  // =========================
+  const loadClients = async () => {
+    try {
+      const res = await api.get("/clients");
+      setClients(res.data || []);
+    } catch (e) {
+      console.error("Error loading clients", e);
+    }
+  };
+
+  // =========================
   // LOAD BUDGET
   // =========================
   useEffect(() => {
@@ -47,12 +64,13 @@ export default function BudgetPage() {
       const budget = res.data;
 
       setName(budget.name || "");
+      setClientId(budget.client?.id || "");
 
       setItems(
         (budget.items || []).map(i => ({
           productId: i.product.id,
           name: i.product.name,
-          sku: i.product.sku, // ✅ FIX CLAVE
+          sku: i.product.sku,
           quantity: i.quantity,
           unitPrice: i.unitPrice,
           priceModificationReason: i.priceModificationReason || ""
@@ -119,7 +137,7 @@ export default function BudgetPage() {
       ...updated[index],
       productId: product.id,
       name: product.name,
-      sku: product.sku, // ✅ IMPORTANTE
+      sku: product.sku,
       unitPrice: product.price || 0,
       priceModificationReason: ""
     };
@@ -152,6 +170,7 @@ export default function BudgetPage() {
 
       const payload = {
         name,
+        clientId, // 🔥 NUEVO
         items: items.map(i => ({
           productId: i.productId,
           quantity: i.quantity,
@@ -178,12 +197,29 @@ export default function BudgetPage() {
     <div className="max-w-7xl mx-auto p-6">
 
       {/* HEADER */}
-      <div className="mb-8">
+      <div className="mb-6 space-y-3">
+
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full text-2xl font-semibold border-b border-gray-300 focus:outline-none focus:border-blue-500"
+          className="w-full text-2xl font-semibold border-b border-gray-300 focus:outline-none"
         />
+
+        {/* 🔥 CLIENT SELECT */}
+        <select
+          value={clientId}
+          onChange={(e) => setClientId(e.target.value)}
+          className="border rounded-lg px-3 py-2"
+        >
+          <option value="">Seleccionar cliente...</option>
+
+          {clients.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.name} ({c.rif})
+            </option>
+          ))}
+        </select>
+
       </div>
 
       {/* SEARCH */}
@@ -221,7 +257,6 @@ export default function BudgetPage() {
 
                 {/* PRODUCT */}
                 <td className="p-4">
-
                   {item.productId ? (
                     <div className="bg-gray-100 border rounded-lg px-3 py-2 truncate">
                       {item.name}
@@ -243,7 +278,6 @@ export default function BudgetPage() {
                       ))}
                     </select>
                   )}
-
                 </td>
 
                 {/* SKU */}
