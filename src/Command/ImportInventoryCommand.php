@@ -6,7 +6,10 @@ use App\Entity\Product;
 use App\Entity\Provider;
 use App\Entity\Category;
 use App\Entity\ProductCost;
-use App\Entity\InventoryBatch;
+use App\Entity\Valija;
+use App\Entity\ValijaProduct;
+use App\Repository\ProductCostRepository;
+use App\Service\StockService;
 use Doctrine\ORM\EntityManagerInterface;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
@@ -18,23 +21,27 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
     name: 'app:import:inventory-xlsx',
-    description: 'Import inventory directly from XLSX (no formula evaluation)'
+    description: 'Import inventory + valijas from XLSX'
 )]
 class ImportInventoryCommand extends Command
 {
     private array $providerCache = [];
     private array $categoryCache = [];
     private array $productCache = [];
+    private array $valijaCache = [];
 
-    public function __construct(private EntityManagerInterface $em)
-    {
+    public function __construct(
+        private EntityManagerInterface $em,
+        private StockService $stockService,
+        private ProductCostRepository $productCostRepo
+    ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this->addArgument('file', InputArgument::REQUIRED, 'XLSX file path');
-        $this->addArgument('sheet', InputArgument::OPTIONAL, 'Sheet name', 'costos-venta detallado');
+        $this->addArgument('file', InputArgument::REQUIRED);
+        $this->addArgument('sheet', InputArgument::OPTIONAL, 'Sheet name', 'Andre');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -42,165 +49,208 @@ class ImportInventoryCommand extends Command
         $file = $input->getArgument('file');
         $sheetName = $input->getArgument('sheet');
 
-        if (!is_file($file)) {
-            $output->writeln('<error>File not found</error>');
-            return Command::FAILURE;
-        }
-
-        // 🔥 Cargar Excel
         $spreadsheet = IOFactory::load($file);
         $sheet = $spreadsheet->getSheetByName($sheetName) ?? $spreadsheet->getSheet(0);
 
-        // 🔥 Leer filas SIN evaluar fórmulas (clave)
         $rows = [];
+
+        // ======================
+        // LECTURA ROBUSTA
+        // ======================
         foreach ($sheet->getRowIterator() as $row) {
-            $rowData = [];
+
+            $data = [];
+
             $cellIterator = $row->getCellIterator();
             $cellIterator->setIterateOnlyExistingCells(false);
 
             foreach ($cellIterator as $cell) {
-                $rowData[] = $cell->getValue(); // 👈 valor crudo
+
+                $value = $cell->getOldCalculatedValue();
+
+                if ($value === null || (is_string($value) && str_starts_with($value, '='))) {
+                    $value = $cell->getValue();
+                }
+
+                $data[] = $value;
             }
-            $rows[] = $rowData;
+
+            $rows[] = $data;
         }
 
-        // 🔍 Detectar cabecera (fila donde está CODIGO)
+        // ======================
+        // DETECTAR HEADER
+        // ======================
         $headerRowIndex = null;
+
         foreach ($rows as $i => $row) {
-            $upper = array_map(fn($v) => strtoupper(trim((string)$v)), $row);
-            if (in_array('CODIGO', $upper, true)) {
+
+            $joined = strtoupper(implode(' ', array_map(fn($v) => (string)$v, $row)));
+
+            if (str_contains($joined, 'COD') && str_contains($joined, 'PROD')) {
                 $headerRowIndex = $i;
                 break;
             }
         }
 
         if ($headerRowIndex === null) {
-            $output->writeln('<error>Header row not found (CODIGO)</error>');
-            return Command::FAILURE;
+            throw new \RuntimeException('Header not found');
         }
 
-        // 🧠 Normalizar cabeceras
+        // ======================
+        // NORMALIZAR HEADERS
+        // ======================
         $headers = array_map(function ($h) {
             $h = strtoupper(trim((string)$h));
             $h = str_replace(["\n", "\r"], ' ', $h);
-            $h = preg_replace('/\s+/', ' ', $h);
-            return $h;
+            return preg_replace('/\s+/', ' ', $h);
         }, $rows[$headerRowIndex]);
 
-        // Mapear nombres "sucios" → nombres esperados
-        $map = [
-            'COSTO DIRECTO' => 'COSTO_DIRECTO',
-            'ENVIO Y NACIONALIZACION' => 'ENVIO_NACIONALIZACION',
-            'COSTO TOTAL' => 'COSTE_TOTAL',
-            'FECHA VENCIMIENTO' => 'FECHA_VENCIMIENTO',
-        ];
+        // ======================
+        // MAP DINÁMICO
+        // ======================
+        $map = [];
 
-        $normalizedHeaders = [];
         foreach ($headers as $h) {
-            $normalizedHeaders[] = $map[$h] ?? $h;
+
+            if (str_contains($h, 'COD')) $map['sku'] = $h;
+            if (str_contains($h, 'PROD')) $map['name'] = $h;
+            if (str_contains($h, 'MARCA')) $map['brand'] = $h;
+            if (str_contains($h, 'SUBGRUPO')) $map['category'] = $h;
+            if (str_contains($h, 'INVENTARIO') || str_contains($h, 'STOCK')) $map['stock'] = $h;
+            if (str_contains($h, 'FECHA')) $map['date'] = $h;
+            if (str_contains($h, 'DESCRIP')) $map['description'] = $h; // 🔥 NUEVO
+        }
+
+        // ======================
+        // VALIJAS
+        // ======================
+        $valijaColumns = [];
+
+        foreach ($headers as $index => $header) {
+            if (str_starts_with($header, 'VALIJA:') || str_starts_with($header, 'MALETA:')) {
+                $valijaColumns[$index] = trim(str_replace(['VALIJA:', 'MALETA:'], '', $header));
+            }
         }
 
         $processed = 0;
 
-        // 🔁 Iterar filas de datos
+        // ======================
+        // LOOP
+        // ======================
         for ($r = $headerRowIndex + 1; $r < count($rows); $r++) {
 
             $row = $rows[$r];
 
-            // Evitar filas vacías
-            if (!array_filter($row, fn($v) => $v !== null && $v !== '')) {
-                continue;
-            }
+            if (!array_filter($row)) continue;
 
-            // Combinar cabecera + fila
             $data = [];
-            foreach ($normalizedHeaders as $idx => $colName) {
-                $data[$colName] = $row[$idx] ?? null;
+
+            foreach ($headers as $i => $col) {
+                $data[$col] = $row[$i] ?? null;
             }
 
-            // 🔹 Campos base
-            $sku = trim((string)($data['CODIGO'] ?? ''));
-            $name = trim((string)($data['PRODUCTO'] ?? ''));
-            $providerName = trim((string)($data['MARCA'] ?? ''));
-            $procedureName = trim((string)($data['PROCEDIMIENTO'] ?? ''));
-            $groupName = trim((string)($data['GRUPO'] ?? ''));
-            $subGroupName = trim((string)($data['SUBGRUPO'] ?? ''));
+            // ======================
+            // PRODUCTO
+            // ======================
+            $sku = strtoupper(trim((string)($data[$map['sku'] ?? ''] ?? '')));
+            $name = trim((string)($data[$map['name'] ?? ''] ?? ''));
 
-            if ($sku === '' || $name === '') {
-                $output->writeln("<comment>Skipping row {$r}: missing CODIGO/PRODUCTO</comment>");
-                continue;
+            if (!$sku || !$name) continue;
+
+            $provider = $this->getProvider($data[$map['brand'] ?? ''] ?? 'UNKNOWN');
+            $category = $this->getCategory($data[$map['category'] ?? ''] ?? 'GENERAL', null);
+
+            $product = $this->getProduct($sku, $name, $provider, $category);
+
+            // ======================
+            // 🔥 DESCRIPCIÓN
+            // ======================
+            $description = trim((string)($data[$map['description'] ?? ''] ?? ''));
+
+            if ($description !== '' && $product->getDescription() !== $description) {
+                $product->setDescription($description);
             }
 
-            // 🔹 Costes
-            $directCost = (float)($data['COSTO_DIRECTO'] ?? 0);
-            $shippingCost = (float)($data['ENVIO_NACIONALIZACION'] ?? 0);
-            $totalCost = (float)($data['COSTE_TOTAL'] ?? 0);
+            // ======================
+            // COSTE
+            // ======================
+            $total = (float)($data['COSTE TOTAL'] ?? $data['PRECIO'] ?? 0);
 
-            // 🔹 Stock + caducidad
-            $stock = (int)($data['EXISTENCIA'] ?? 0);
-            $expirationRaw = $data['FECHA_VENCIMIENTO'] ?? null;
-
-            // ===== Provider =====
-            $provider = $this->getProvider($providerName ?: 'UNKNOWN');
-
-            // ===== Category tree (3 niveles) =====
-            $procedure = $this->getCategory($procedureName ?: 'GENERAL', null);
-            $group = $this->getCategory($groupName ?: 'GENERAL', $procedure);
-            $subGroup = $this->getCategory($subGroupName ?: 'GENERAL', $group);
-
-            // ===== Product =====
-            $product = $this->getProduct($sku, $name, $provider, $subGroup);
-
-            // ===== ProductCost (histórico) =====
-            if ($totalCost > 0 || $directCost > 0 || $shippingCost > 0) {
+            if ($total > 0) {
                 $cost = new ProductCost();
                 $cost->setProduct($product);
-                $cost->setDirectCost($directCost);
-                $cost->setShippingCost($shippingCost);
-                $cost->setTotalCost($totalCost > 0 ? $totalCost : ($directCost + $shippingCost));
+                $cost->setTotalCost($total);
+                $cost->setDirectCost($total);
+                $cost->setShippingCost(0);
                 $this->em->persist($cost);
             }
 
-            // ===== InventoryBatch (stock + caducidad) =====
-            if ($stock > 0) {
+            // ======================
+            // FECHA
+            // ======================
+            $rawDate = $data[$map['date'] ?? ''] ?? null;
 
-                // 🔥 sincronizar: eliminar batches previos
-                foreach ($product->getBatches() as $b) {
-                    $this->em->remove($b);
-                }
-
-                $expirationDate = null;
-
-                if ($expirationRaw !== null && $expirationRaw !== '') {
-                    try {
-                        // Excel serial (número)
-                        if (is_numeric($expirationRaw)) {
-                            $expirationDate = ExcelDate::excelToDateTimeObject($expirationRaw);
-                        } else {
-                            // string (YYYY-MM-DD recomendado)
-                            $expirationDate = new \DateTime((string)$expirationRaw);
-                        }
-                    } catch (\Exception $e) {
-                        $expirationDate = null;
-                    }
-                }
-
-                $batch = new InventoryBatch();
-                $batch->setProduct($product);
-                $batch->setQuantity($stock);
-                $batch->setExpirationDate($expirationDate);
-                $this->em->persist($batch);
+            if (is_string($rawDate) && str_starts_with($rawDate, '=')) {
+                $rawDate = null;
             }
 
-            // ===== Batching (memoria) =====
-            if ($processed > 0 && $processed % 100 === 0) {
+            $expiration = null;
+
+            if ($rawDate !== null && $rawDate !== '') {
+                try {
+                    if (is_numeric($rawDate)) {
+                        $expiration = ExcelDate::excelToDateTimeObject($rawDate);
+                    } else {
+                        $expiration = new \DateTime($rawDate);
+                    }
+                } catch (\Exception) {}
+            }
+
+            // ======================
+            // STOCK
+            // ======================
+            $stock = (int)($data[$map['stock'] ?? ''] ?? 0);
+
+            if ($stock > 0 && $expiration) {
+
+                $this->stockService->addOrUpdateStock(
+                    $product,
+                    $stock,
+                    $expiration,
+                    null,
+                    StockService::MODE_INCREMENTAL
+                );
+
+            } else {
+                $output->writeln("⚠️ SKIP batch sin fecha → $sku");
+            }
+
+            // ======================
+            // VALIJAS
+            // ======================
+            foreach ($valijaColumns as $colIndex => $valijaName) {
+
+                $value = (int)($row[$colIndex] ?? 0);
+
+                if ($value <= 0) continue;
+
+                $valija = $this->getOrCreateValija($valijaName);
+
+                $this->assignProductToValija($valija, $product, $value);
+            }
+
+            // ======================
+            // BATCHING
+            // ======================
+            if ($processed > 0 && $processed % 200 === 0) {
                 $this->em->flush();
                 $this->em->clear();
 
-                // limpiar caches (entidades se desasocian tras clear)
                 $this->providerCache = [];
                 $this->categoryCache = [];
                 $this->productCache = [];
+                $this->valijaCache = [];
             }
 
             $processed++;
@@ -208,11 +258,14 @@ class ImportInventoryCommand extends Command
 
         $this->em->flush();
 
-        $output->writeln("<info>Import finished: {$processed} rows</info>");
+        $output->writeln("Importados: $processed");
+
         return Command::SUCCESS;
     }
 
-    // ================= HELPERS =================
+    // ======================
+    // HELPERS
+    // ======================
 
     private function getProvider(string $name): Provider
     {
@@ -220,42 +273,30 @@ class ImportInventoryCommand extends Command
 
         if (!isset($this->providerCache[$key])) {
             $repo = $this->em->getRepository(Provider::class);
-            $provider = $repo->findOneBy(['name' => $key]);
+            $p = $repo->findOneBy(['name' => $key]) ?? new Provider();
 
-            if (!$provider) {
-                $provider = new Provider();
-                $provider->setName($name);
-                $this->em->persist($provider);
-            }
+            $p->setName($name);
+            $this->em->persist($p);
 
-            $this->providerCache[$key] = $provider;
+            $this->providerCache[$key] = $p;
         }
 
         return $this->providerCache[$key];
     }
 
-    private function getCategory(string $name, ?Category $parent): ?Category
+    private function getCategory(string $name, ?Category $parent): Category
     {
-        if ($name === '') return null;
-
-        $key = strtoupper($name) . '_' . ($parent?->getId() ?? 'root');
+        $key = strtoupper($name);
 
         if (!isset($this->categoryCache[$key])) {
             $repo = $this->em->getRepository(Category::class);
+            $c = $repo->findOneBy(['name' => $key]) ?? new Category();
 
-            $cat = $repo->findOneBy([
-                'name' => strtoupper($name),
-                'parent' => $parent
-            ]);
+            $c->setName($name);
+            $c->setParent($parent);
+            $this->em->persist($c);
 
-            if (!$cat) {
-                $cat = new Category();
-                $cat->setName($name);
-                $cat->setParent($parent);
-                $this->em->persist($cat);
-            }
-
-            $this->categoryCache[$key] = $cat;
+            $this->categoryCache[$key] = $c;
         }
 
         return $this->categoryCache[$key];
@@ -265,22 +306,56 @@ class ImportInventoryCommand extends Command
     {
         if (!isset($this->productCache[$sku])) {
             $repo = $this->em->getRepository(Product::class);
-            $product = $repo->findOneBy(['sku' => $sku]);
+            $p = $repo->findOneBy(['sku' => $sku]) ?? new Product();
 
-            if (!$product) {
-                $product = new Product();
-                $product->setSku($sku);
-                $product->setName($name);
-                $product->setBrand($provider->getName()); // evita null
-                $product->setProvider($provider);
-                $product->setCategory($category);
-                $product->setMinStock(10);
-                $this->em->persist($product);
-            }
+            $p->setSku($sku);
+            $p->setName($name);
+            $p->setBrand($provider->getName());
+            $p->setProvider($provider);
+            $p->setCategory($category);
+            $p->setMinStock(10);
 
-            $this->productCache[$sku] = $product;
+            $this->em->persist($p);
+
+            $this->productCache[$sku] = $p;
         }
 
         return $this->productCache[$sku];
+    }
+
+    private function getOrCreateValija(string $name): Valija
+    {
+        $key = strtoupper($name);
+
+        if (!isset($this->valijaCache[$key])) {
+            $repo = $this->em->getRepository(Valija::class);
+            $v = $repo->findOneBy(['name' => $name]) ?? new Valija();
+
+            $v->setName($name);
+            $this->em->persist($v);
+
+            $this->valijaCache[$key] = $v;
+        }
+
+        return $this->valijaCache[$key];
+    }
+
+    private function assignProductToValija(Valija $valija, Product $product, int $stockMin): void
+    {
+        $repo = $this->em->getRepository(ValijaProduct::class);
+
+        $vp = $repo->findOneBy([
+            'valija' => $valija,
+            'product' => $product
+        ]);
+
+        if (!$vp) {
+            $vp = new ValijaProduct();
+            $vp->setValija($valija);
+            $vp->setProduct($product);
+            $this->em->persist($vp);
+        }
+
+        $vp->setStockMin(max(0, $stockMin));
     }
 }

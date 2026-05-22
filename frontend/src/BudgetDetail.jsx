@@ -60,6 +60,7 @@ export default function BudgetDetail() {
           <thead className="bg-gray-50">
             <tr>
               <th className="p-4 text-left">Producto</th>
+              <th className="p-4 text-left">Código</th>
               <th className="text-center">Cantidad</th>
               <th className="text-center">Precio</th>
               <th className="text-center">Total</th>

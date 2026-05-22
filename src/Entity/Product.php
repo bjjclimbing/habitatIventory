@@ -24,6 +24,7 @@ class Product
     #[Groups(['product:read'])]
     private ?int $id = null;
 
+    #[Groups(['product:read'])]
     #[ORM\Column(length: 255)]
     private ?string $sku = null;
 
@@ -60,6 +61,9 @@ class Product
     #[ORM\OrderBy(['createdAt' => 'DESC'])]
     private Collection $costs;
 
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $description = null;
+
     public function __construct()
     {
         $this->batches = new ArrayCollection();
@@ -67,25 +71,75 @@ class Product
         $this->costs = new ArrayCollection(); // 🔥 IMPORTANTE
 
     }
+    public function getDescription(): ?string
+    {
+        return $this->description;
+    }
 
-    public function getId(): ?int { return $this->id; }
-    public function getSku(): ?string { return $this->sku; }
-    public function setSku(string $sku): static { $this->sku = $sku; return $this; }
+    public function setDescription(?string $description): self
+    {
+        $this->description = $description;
+        return $this;
+    }
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+    public function getSku(): ?string
+    {
+        return $this->sku;
+    }
+    public function setSku(string $sku): static
+    {
+        $this->sku = $sku;
+        return $this;
+    }
 
-    public function getName() { return $this->name; }
-    public function setName($name) { $this->name = $name; return $this; }
+    public function getName()
+    {
+        return $this->name;
+    }
+    public function setName($name)
+    {
+        $this->name = $name;
+        return $this;
+    }
 
-    public function getBrand() { return $this->brand; }
-    public function setBrand($brand) { $this->brand = $brand; return $this; }
+    public function getBrand()
+    {
+        return $this->brand;
+    }
+    public function setBrand($brand)
+    {
+        $this->brand = $brand;
+        return $this;
+    }
 
     #[Groups(['product:read'])]
-    public function getMinStock(): ?int { return $this->minstock; }
-    public function setMinstock($minstock) { $this->minstock = $minstock; return $this; }
+    public function getMinStock(): ?int
+    {
+        return $this->minstock;
+    }
+    public function setMinstock($minstock)
+    {
+        $this->minstock = $minstock;
+        return $this;
+    }
 
-    public function getProvider() { return $this->provider; }
-    public function setProvider($provider) { $this->provider = $provider; return $this; }
+    public function getProvider()
+    {
+        return $this->provider;
+    }
+    public function setProvider($provider)
+    {
+        $this->provider = $provider;
+        return $this;
+    }
 
-    public function getBatches(): Collection { return $this->batches; }
+    public function getBatches(): Collection
+    {
+        return $this->batches;
+    }
 
     public function addBatch(InventoryBatch $batch): self
     {
@@ -106,8 +160,15 @@ class Product
         return $this;
     }
 
-    public function getCategory(): ?Category { return $this->category; }
-    public function setCategory(?Category $category): self { $this->category = $category; return $this; }
+    public function getCategory(): ?Category
+    {
+        return $this->category;
+    }
+    public function setCategory(?Category $category): self
+    {
+        $this->category = $category;
+        return $this;
+    }
 
     #[Groups(['product:read'])]
     public function getStock(): int
@@ -117,22 +178,24 @@ class Product
         );
     }
 
-    public function getMovements(): Collection { return $this->movements; }
-    public function getCosts(): Collection
-{
-    return $this->costs;
-}
-public function addCost(ProductCost $cost): self
-{
-    if (!$this->costs->contains($cost)) {
-        $this->costs[] = $cost;
-        $cost->setProduct($this);
+    public function getMovements(): Collection
+    {
+        return $this->movements;
     }
-    return $this;
-}
-public function getLastPrice(): ?float
-{
-    return $this->costs->last()?->getTotalCost();
-}
-
+    public function getCosts(): Collection
+    {
+        return $this->costs;
+    }
+    public function addCost(ProductCost $cost): self
+    {
+        if (!$this->costs->contains($cost)) {
+            $this->costs[] = $cost;
+            $cost->setProduct($this);
+        }
+        return $this;
+    }
+    public function getLastPrice(): ?float
+    {
+        return $this->costs->last()?->getTotalCost();
+    }
 }

@@ -183,6 +183,7 @@ public function detail(Budget $budget): JsonResponse
             'product' => [
                 'id' => $item->getProduct()->getId(),
                 'name' => $item->getProduct()->getName(),
+                'sku' => $item->getProduct()->getSku(),
             ],
             'quantity' => $item->getQuantity(),
             'unitPrice' => $item->getEffectiveUnitPrice(),
@@ -355,7 +356,7 @@ public function exportExcel(Budget $budget): Response
 
         $sheet->setCellValue("A$row", $item->getProduct()->getSku());
     
-        $sheet->setCellValue("B$row", $item->getProduct()->getName());
+        $sheet->setCellValue("B$row", $item->getProduct()->getDescription());
     
         $sheet->mergeCells("B$row:E$row");
     

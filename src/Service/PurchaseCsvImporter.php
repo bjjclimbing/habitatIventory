@@ -181,11 +181,19 @@ class PurchaseCsvImporter
             }
 
             // ===== Stock =====
-            $this->stockService->addStock(
+            /*$this->stockService->addStock(
                 $product,
                 $quantity,
                 $expiration,
                 $commissionPercent // 🔥 AQUÍ VA
+            );*/
+            //nuevo cambio
+            $this->stockService->addOrUpdateStock(
+                $product,
+                $quantity,
+                $expiration,
+                $commissionPercent,
+                StockService::MODE_INCREMENTAL
             );
         }
 

@@ -53,7 +53,8 @@ class ValijaController
                 'stockMin' => $vp->getStockMin(),
                 'product' => [
                     'id' => $vp->getProduct()->getId(),
-                    'name' => $vp->getProduct()->getName()
+                    'name' => $vp->getProduct()->getName(),
+                    'sku'   => $vp->getProduct()->getSku()
                 ]
             ];
         }

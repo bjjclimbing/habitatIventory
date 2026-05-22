@@ -19,21 +19,17 @@ export default function BudgetPage() {
   }, []);
 
   const loadProducts = async (searchValue = "") => {
-
     try {
-
       let url = `/products?page=1`;
 
       if (searchValue) {
-        url += `&name=${searchValue}`;
+        url += `&name=${encodeURIComponent(searchValue)}`;
       }
 
       const res = await api.get(url);
-
       setProducts(res.data.data || []);
 
     } catch (e) {
-
       console.error("Error loading products", e);
     }
   };
@@ -42,19 +38,12 @@ export default function BudgetPage() {
   // LOAD BUDGET
   // =========================
   useEffect(() => {
-
-    if (id) {
-      loadBudget();
-    }
-
+    if (id) loadBudget();
   }, [id]);
 
   const loadBudget = async () => {
-
     try {
-
       const res = await api.get(`/budgets/${id}`);
-
       const budget = res.data;
 
       setName(budget.name || "");
@@ -63,17 +52,15 @@ export default function BudgetPage() {
         (budget.items || []).map(i => ({
           productId: i.product.id,
           name: i.product.name,
+          sku: i.product.sku, // ✅ FIX CLAVE
           quantity: i.quantity,
           unitPrice: i.unitPrice,
-          priceModificationReason:
-            i.priceModificationReason || ""
+          priceModificationReason: i.priceModificationReason || ""
         }))
       );
 
     } catch (e) {
-
       console.error("Error loading budget", e);
-
       alert("❌ Error cargando presupuesto");
     }
   };
@@ -82,25 +69,23 @@ export default function BudgetPage() {
   // SEARCH (debounce)
   // =========================
   useEffect(() => {
-
     const delay = setTimeout(() => {
       loadProducts(search);
     }, 300);
 
     return () => clearTimeout(delay);
-
   }, [search]);
 
   // =========================
   // ADD ITEM
   // =========================
   const addItem = () => {
-
     setItems([
       ...items,
       {
         productId: "",
         name: "",
+        sku: "",
         quantity: 1,
         unitPrice: 0,
         priceModificationReason: ""
@@ -112,11 +97,8 @@ export default function BudgetPage() {
   // REMOVE ITEM
   // =========================
   const removeItem = (index) => {
-
     const updated = [...items];
-
     updated.splice(index, 1);
-
     setItems(updated);
   };
 
@@ -137,6 +119,7 @@ export default function BudgetPage() {
       ...updated[index],
       productId: product.id,
       name: product.name,
+      sku: product.sku, // ✅ IMPORTANTE
       unitPrice: product.price || 0,
       priceModificationReason: ""
     };
@@ -145,38 +128,11 @@ export default function BudgetPage() {
   };
 
   // =========================
-  // QUANTITY
+  // UPDATE FIELD
   // =========================
-  const handleQuantityChange = (value, index) => {
-
+  const updateItem = (index, field, value) => {
     const updated = [...items];
-
-    updated[index].quantity = parseInt(value) || 0;
-
-    setItems(updated);
-  };
-
-  // =========================
-  // PRICE
-  // =========================
-  const handlePriceChange = (value, index) => {
-
-    const updated = [...items];
-
-    updated[index].unitPrice = parseFloat(value) || 0;
-
-    setItems(updated);
-  };
-
-  // =========================
-  // REASON
-  // =========================
-  const handleReasonChange = (value, index) => {
-
-    const updated = [...items];
-
-    updated[index].priceModificationReason = value;
-
+    updated[index][field] = value;
     setItems(updated);
   };
 
@@ -192,7 +148,6 @@ export default function BudgetPage() {
   // SAVE
   // =========================
   const saveBudget = async () => {
-
     try {
 
       const payload = {
@@ -201,184 +156,124 @@ export default function BudgetPage() {
           productId: i.productId,
           quantity: i.quantity,
           unitPrice: i.unitPrice,
-          priceModificationReason:
-            i.priceModificationReason
+          priceModificationReason: i.priceModificationReason
         }))
       };
 
       if (id) {
-
         await api.put(`/budgets/${id}`, payload);
-
         alert("✅ Presupuesto actualizado");
-
       } else {
-
         await api.post("/budgets", payload);
-
         alert("✅ Presupuesto guardado");
       }
 
     } catch (e) {
-
       console.error(e);
-
       alert("❌ Error al guardar");
     }
   };
 
-  // =========================
-  // UI
-  // =========================
   return (
-
     <div className="max-w-7xl mx-auto p-6">
 
       {/* HEADER */}
       <div className="mb-8">
-
-        <label className="block text-sm text-gray-500 mb-1">
-          Nombre del presupuesto
-        </label>
-
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="w-full text-2xl font-semibold border-b border-gray-300 focus:outline-none focus:border-blue-500"
         />
-
       </div>
 
       {/* SEARCH */}
       <div className="mb-4">
-
         <input
           type="text"
           placeholder="🔍 Buscar producto por nombre o SKU..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full border rounded-lg px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className="w-full border rounded-lg px-4 py-2 shadow-sm"
         />
-
       </div>
 
       {/* TABLE */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
 
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
 
           <thead className="bg-gray-50 text-gray-600">
-
             <tr>
-              <th className="text-left p-4">Producto</th>
-              <th className="text-center">Cantidad</th>
-              <th className="text-right">Precio</th>
-              <th className="text-left">Motivo</th>
-              <th className="text-right">Total</th>
-              <th></th>
+              <th className="p-4 w-64 text-left">Producto</th>
+              <th className="p-4 w-40 text-left">SKU</th>
+              <th className="text-center w-24">Cantidad</th>
+              <th className="text-right w-32">Precio</th>
+              <th className="text-right w-32">Total</th>
+              <th className="w-16"></th>
             </tr>
-
           </thead>
 
           <tbody>
 
             {items.map((item, index) => (
 
-              <tr
-                key={index}
-                className="border-t hover:bg-gray-50"
-              >
+              <tr key={index} className="border-t hover:bg-gray-50">
 
                 {/* PRODUCT */}
-                {/* PRODUCT */}
-<td className="p-4">
+                <td className="p-4">
 
-{item.productId ? (
+                  {item.productId ? (
+                    <div className="bg-gray-100 border rounded-lg px-3 py-2 truncate">
+                      {item.name}
+                    </div>
+                  ) : (
+                    <select
+                      value={item.productId}
+                      onChange={(e) =>
+                        handleSelectProduct(e.target.value, index)
+                      }
+                      className="w-full border rounded-lg px-3 py-2"
+                    >
+                      <option value="">Seleccionar producto...</option>
 
-  <div className="bg-gray-100 border rounded-lg px-3 py-2">
-    {item.name}
-  </div>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.sku} — {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
 
-) : (
+                </td>
 
-  <select
-    value={item.productId}
-    onChange={(e) =>
-      handleSelectProduct(
-        e.target.value,
-        index
-      )
-    }
-    className="w-full border rounded-lg px-3 py-2"
-  >
-
-    <option value="">
-      Seleccionar producto...
-    </option>
-
-    {products.map(p => (
-      <option key={p.id} value={p.id}>
-        {p.sku} — {p.name}
-      </option>
-    ))}
-
-  </select>
-
-)}
-
-</td>
+                {/* SKU */}
+                <td className="p-4 font-mono text-gray-700 truncate">
+                  {item.sku || "-"}
+                </td>
 
                 {/* QUANTITY */}
                 <td className="text-center">
-
                   <input
                     type="number"
                     value={item.quantity}
                     onChange={(e) =>
-                      handleQuantityChange(
-                        e.target.value,
-                        index
-                      )
+                      updateItem(index, "quantity", parseInt(e.target.value) || 0)
                     }
                     className="w-16 text-center border rounded"
                   />
-
                 </td>
 
                 {/* PRICE */}
                 <td className="text-right pr-4">
-
                   <input
                     type="number"
                     step="0.01"
                     value={item.unitPrice}
                     onChange={(e) =>
-                      handlePriceChange(
-                        e.target.value,
-                        index
-                      )
+                      updateItem(index, "unitPrice", parseFloat(e.target.value) || 0)
                     }
                     className="w-24 text-right border rounded px-2 py-1"
                   />
-
-                </td>
-
-                {/* REASON */}
-                <td className="px-4">
-
-                  <input
-                    type="text"
-                    value={item.priceModificationReason || ""}
-                    onChange={(e) =>
-                      handleReasonChange(
-                        e.target.value,
-                        index
-                      )
-                    }
-                    placeholder="Motivo opcional..."
-                    className="w-full border rounded px-2 py-1 text-sm"
-                  />
-
                 </td>
 
                 {/* TOTAL */}
@@ -388,17 +283,16 @@ export default function BudgetPage() {
 
                 {/* DELETE */}
                 <td className="text-center">
-
                   <button
                     onClick={() => removeItem(index)}
                     className="text-red-500 hover:text-red-700"
                   >
                     ✕
                   </button>
-
                 </td>
 
               </tr>
+
             ))}
 
           </tbody>

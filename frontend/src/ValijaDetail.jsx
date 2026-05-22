@@ -187,15 +187,16 @@ export default function ValijaDetail() {
       {/* TABLE */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
 
-        <table className="w-full text-sm">
+      <table className="w-full text-sm table-fixed">
 
-          <thead className="bg-gray-50 text-gray-600">
-            <tr>
-              <th className="text-left p-4">Producto</th>
-              <th className="text-center">Stock mínimo</th>
-              <th className="text-center">Acciones</th>
-            </tr>
-          </thead>
+      <thead className="bg-gray-50 text-gray-600">
+  <tr>
+    <th className="p-4 w-40 text-left">SKU</th>
+    <th className="p-4 text-left">Producto</th>
+    <th className="w-32 text-center">Stock mínimo</th>
+    <th className="w-24 text-center">Acciones</th>
+  </tr>
+</thead>
 
           <tbody>
 
@@ -208,9 +209,14 @@ export default function ValijaDetail() {
             )}
 
             {valija.products?.map(vp => (
+            
               <tr key={vp.id} className="border-t hover:bg-gray-50">
+                {/* SKU */}
+      <td className="p-4 text-gray-800 font-mono truncate">
+        {vp.product.sku || "-"}
+      </td>
 
-                <td className="p-4 font-medium text-gray-800">
+                <td className="p-4 font-medium text-gray-800 ">
                   {vp.product.name}
                 </td>
 
