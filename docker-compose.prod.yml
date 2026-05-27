@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    image: inventory_app:latest   # 🔥 viene del build
+
+    container_name: inventory_app_prod
+
+    ports:
+      - "8480:80"
+
+    networks:
+      - h3_net
+
+networks:
+  h3_net:
+    external: true

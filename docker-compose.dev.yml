@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      args:
+        APACHE_ENV: dev
+        APP_ENV: dev
+
+    container_name: inventory_app_dev
+
+    volumes:
+      - .:/var/www   # 🔥 CLAVE DEV
+
+    ports:
+      - "8480:80"
+
+    networks:
+      - h3_net
+
+networks:
+  h3_net:
+    external: true
