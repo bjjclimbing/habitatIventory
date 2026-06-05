@@ -47,7 +47,7 @@ cd ..
 
 echo "📁 Moviendo build a Symfony..."
 mkdir -p public/build
-cp -r frontend/dist/* public/build/
+cp -r frontend/dist/* public/
 
 # =========================
 # DOCKER BUILD
@@ -71,6 +71,6 @@ OUTPUT_FILE="${IMAGE_NAME}_${VERSION}.tar"
 docker save -o $OUTPUT_FILE ${IMAGE_NAME}:${VERSION} 
 
 echo "🗜️ Compressing with xz..."
-xz -T0 -6 $OUTPUT_FILE
+#xz -T0 -6 $OUTPUT_FILE
 
 echo "✅ DONE → $OUTPUT_FILE"

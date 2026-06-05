@@ -25,7 +25,7 @@
         RewriteRule ^ - [L]
 
         # React build
-        RewriteRule ^ index.html [L]
+        RewriteRule ^ build/index.html [L]
     </Directory>
 
     DirectoryIndex index.html index.php
