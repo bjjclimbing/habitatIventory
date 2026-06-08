@@ -68,10 +68,12 @@ class AlertController
             // 🔹 caso producto simple
             return [
                 'product' => [
-                    'name' => $item->getName(),
-                    'stock' => $item->getStock(),
-                    'min' => $item->getMinStock()
-                ]
+        'id' => $item->getId(),
+        'sku' => $item->getSku(),
+        'name' => $item->getName(),
+        'stock' => $item->getStock(),
+        'min' => $item->getMinStock()
+    ]
             ];
         }, $data);
 

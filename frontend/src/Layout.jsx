@@ -6,6 +6,35 @@ export default function Layout({ children }) {
   const { user } = useAuth();
   const isAdmin = user?.roles?.includes("ROLE_ADMIN");
   const { logout } = useAuth();
+  const exportCsv = async () => {
+    try {
+      const response = await api.get(
+        "/inventory/export/csv",
+        {
+          responseType: "blob",
+        }
+      );
+  
+      const url = window.URL.createObjectURL(
+        new Blob([response.data])
+      );
+  
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `inventory_${new Date().toISOString().slice(0,10)}.csv`
+      );
+  
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+  
+    } catch (e) {
+      console.error(e);
+      alert("Error exportando CSV");
+    }
+  };
 
   // =========================
   // ALERTAS DINÁMICAS
@@ -217,23 +246,30 @@ export default function Layout({ children }) {
         {/* =========================
             ACTIONS
         ========================= */}
-        <div className="mt-auto pt-6 border-t">
+<div className="mt-auto pt-6 border-t">
 
-          <Link
-            to="/import"
-            className="block bg-green-600 text-white text-center py-2 rounded-lg text-sm hover:bg-green-700 mb-3"
-          >
-            Import CSV
-          </Link>
+<Link
+  to="/import"
+  className="block w-full bg-green-600 text-white text-center py-2 rounded-lg text-sm hover:bg-green-700 mb-3"
+>
+  📤 Import CSV
+</Link>
 
-          <button
-            onClick={logout}
-            className="w-full bg-red-500 text-white py-2 rounded-lg text-sm hover:bg-red-600"
-          >
-            Logout
-          </button>
+<button
+  onClick={exportCsv}
+  className="w-full bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700 mb-3"
+>
+  📥 Exportar CSV
+</button>
 
-        </div>
+<button
+  onClick={logout}
+  className="w-full bg-red-500 text-white py-2 rounded-lg text-sm hover:bg-red-600"
+>
+  Logout
+</button>
+
+</div>
 
       </aside>
 

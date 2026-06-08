@@ -38,7 +38,7 @@ export default function AlertsPage() {
 
     try {
       await api.post("/valijas/sync");
-      await load(); // recarga sin refresh
+      await load();
       alert("Maletas sincronizadas");
     } catch (e) {
       console.error(e);
@@ -53,12 +53,29 @@ export default function AlertsPage() {
   // =========================
   const getTitle = () => {
     switch (type) {
-      case "valija_critical": return "🔥 Maletas críticas";
-      case "valija_low": return "📦 Maletas con bajo stock";
-      case "low_stock": return "⚠️ Productos bajo stock";
-      case "warning": return "⏳ Próximos a caducar";
-      case "expired": return "❌ Productos caducados";
-      default: return "Alertas";
+      case "valija_critical":
+        return "🔥 Maletas críticas";
+
+      case "valija_low":
+        return "📦 Maletas con bajo stock";
+
+      case "valija_expiring":
+        return "⏳ Productos próximos a caducar en maletas";
+
+      case "valija_expired":
+        return "☠️ Productos caducados en maletas";
+
+      case "low_stock":
+        return "⚠️ Productos bajo stock";
+
+      case "warning":
+        return "⏳ Próximos a caducar";
+
+      case "expired":
+        return "❌ Productos caducados";
+
+      default:
+        return "Alertas";
     }
   };
 
@@ -68,14 +85,13 @@ export default function AlertsPage() {
   return (
     <div>
 
-      {/* HEADER + ACTION */}
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-4">
 
         <h2 className="text-xl font-bold">
           {getTitle()}
         </h2>
 
-        {/* 🔄 BOTÓN SOLO PARA VALIJAS */}
         {(type === "valija_low" || type === "valija_critical") && (
           <button
             onClick={handleSync}
@@ -103,6 +119,7 @@ export default function AlertsPage() {
           <thead className="bg-gray-50 text-gray-600">
             <tr>
               <th className="text-left p-4">Elemento</th>
+              <th className="text-left p-4">SKU</th>
               <th className="text-center">Info</th>
             </tr>
           </thead>
@@ -111,7 +128,7 @@ export default function AlertsPage() {
 
             {alerts.length === 0 && !loading && (
               <tr>
-                <td colSpan="2" className="p-4 text-center text-gray-500">
+                <td colSpan="3" className="p-4 text-center text-gray-500">
                   No hay alertas
                 </td>
               </tr>
@@ -120,46 +137,67 @@ export default function AlertsPage() {
             {alerts.map((a, i) => (
               <tr key={i} className="border-t hover:bg-gray-50">
 
-                {/* 🔹 NOMBRE (CORREGIDO) */}
+                {/* ELEMENTO */}
                 <td className="p-4">
 
-                  {a.valija ? (
-                    <Link
-                      to={`/valijas/${a.valija.id}`}
-                      className="text-purple-600 hover:underline font-medium"
-                    >
-                      📦 {a.valija.name}
-                    </Link>
-                  ) : (
-                    <span>
-                      {a.product?.name}
-                    </span>
+                  {a.valija && (
+                    <div className="mb-1">
+                      <Link
+                        to={`/valijas/${a.valija.id}`}
+                        className="text-purple-600 hover:underline font-medium"
+                      >
+                        📦 {a.valija.name}
+                      </Link>
+                    </div>
+                  )}
+
+                  {a.product && (
+                    <div>
+
+                      <Link
+                        to={`/products/${a.product.id}`}
+                        className="text-blue-600 hover:underline font-medium"
+                      >
+                        {a.product.name}
+                      </Link>
+
+
+
+                    </div>
                   )}
 
                 </td>
-
-                {/* 🔹 INFO */}
+                <td className="p-4 font-mono text-sm text-gray-600">
+                  {a.product?.sku || "-"}
+                </td>
+                {/* INFO */}
                 <td className="text-center">
 
-                  {/* VALIJAS */}
-                  {a.current !== undefined && (
-                    <span className="font-semibold text-orange-600">
+                  {/* VALIJAS STOCK */}
+                  {a.current !== undefined && a.min !== undefined && (
+                    <div className="font-semibold text-orange-600">
                       {a.current} / {a.min}
-                    </span>
+                    </div>
                   )}
 
-                  {/* PRODUCTOS */}
+                  {/* PRODUCTOS STOCK */}
                   {a.product?.stock !== undefined && (
-                    <span className="font-semibold text-red-600">
+                    <div className="font-semibold text-red-600">
                       {a.product.stock} / {a.product.min}
-                    </span>
+                    </div>
                   )}
 
-                  {/* CADUCIDAD */}
+                  {/* FECHA CADUCIDAD */}
                   {a.batch && (
-                    <span className="text-blue-600">
-                      {a.batch.expirationDate}
-                    </span>
+                    <div className="text-blue-600">
+
+                      <div>
+                        {a.batch.expirationDate}
+                      </div>
+
+                     
+
+                    </div>
                   )}
 
                 </td>
