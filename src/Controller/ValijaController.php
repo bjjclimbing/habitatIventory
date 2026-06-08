@@ -48,15 +48,37 @@ class ValijaController
         $products = [];
 
         foreach ($valija->getProducts() as $vp) {
-            $products[] = [
-                'id' => $vp->getId(),
-                'stockMin' => $vp->getStockMin(),
-                'product' => [
-                    'id' => $vp->getProduct()->getId(),
-                    'name' => $vp->getProduct()->getName(),
-                    'sku'   => $vp->getProduct()->getSku()
-                ]
-            ];
+            $product = $vp->getProduct();
+
+$nextExpiration = null;
+
+foreach ($product->getBatches() as $batch) {
+
+    if ($batch->getQuantity() <= 0) {
+        continue;
+    }
+
+    $expiration = $batch->getExpirationDate();
+
+    if (!$expiration) {
+        continue;
+    }
+
+    if ($nextExpiration === null || $expiration < $nextExpiration) {
+        $nextExpiration = $expiration;
+    }
+}
+
+$products[] = [
+    'id' => $vp->getId(),
+    'stockMin' => $vp->getStockMin(),
+    'product' => [
+        'id' => $product->getId(),
+        'name' => $product->getName(),
+        'sku' => $product->getSku(),
+        'nextExpirationDate' => $nextExpiration?->format('Y-m-d')
+    ]
+];
         }
 
         return new JsonResponse([

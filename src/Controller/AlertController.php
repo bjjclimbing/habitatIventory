@@ -24,6 +24,8 @@ class AlertController
             'expired' => count($grouped['expired'] ?? []),
             'valija_low' => count($grouped['valija_low'] ?? []),
             'valija_critical' => count($grouped['valija_critical'] ?? []),
+            'valija_expiring' => count($grouped['valija_expiring'] ?? []),
+            'valija_expired' => count($grouped['valija_expired'] ?? []),
         ]);
     }
     #[Route('/api/alerts/details', methods: ['GET'])]
@@ -42,6 +44,8 @@ class AlertController
 
                 return [
                     'product' => isset($item['product']) ? [
+                        'id' => $item['product']->getId(),
+                        'sku' => $item['product']->getSku(),
                         'name' => $item['product']->getName()
                     ] : null,
 
@@ -55,7 +59,9 @@ class AlertController
 
                     'batch' => isset($item['batch']) ? [
                         'expirationDate' => $item['batch']->getExpirationDate()?->format('Y-m-d')
-                    ] : null
+                    ] : null,
+
+                    'days' => $item['days'] ?? null
                 ];
             }
 
@@ -82,7 +88,9 @@ class AlertController
             'warning' => count($data['warning']),
             'expired' => count($data['expired']),
             'valija_low' => count($data['valija_low'] ?? []),
-            'valija_critical' => count($data['valija_critical'] ?? [])
+            'valija_critical' => count($data['valija_critical'] ?? []),
+            'valija_expiring' => count($data['valija_expiring'] ?? []),
+            'valija_expired' => count($data['valija_expired'] ?? []),
         ]);
     }
 }

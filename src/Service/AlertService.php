@@ -78,7 +78,9 @@ class AlertService
             'warning' => [],
             'expired' => [],
             'valija_low' => [],
-            'valija_critical' => []
+            'valija_critical' => [],
+            'valija_expiring' => [],
+            'valija_expired' => []
         ];
 
         $products = $this->productRepository->findAll();
@@ -160,7 +162,53 @@ class AlertService
                 }
             }
         }
+// =====================================
+// 🔥 PRODUCTOS EN VALIJAS PRÓXIMOS A CADUCAR Y CADUCADOS
+// =====================================
+$now = new \DateTime();
 
+foreach ($this->valijaStockRepo->findAll() as $stock) {
+
+    if ($stock->getQuantity() <= 0) {
+        continue;
+    }
+
+    $batch = $stock->getBatch();
+
+    if (!$batch->getExpirationDate()) {
+        continue;
+    }
+
+    $expirationDate = $batch->getExpirationDate();
+
+    $days = $now->diff($expirationDate)->days;
+
+    // 🔥 YA CADUCADO
+    if ($expirationDate < $now) {
+
+        $grouped['valija_expired'][] = [
+            'valija' => $stock->getValija(),
+            'product' => $stock->getProduct(),
+            'batch' => $batch,
+            'current' => $stock->getQuantity(),
+            'days' => 0
+        ];
+
+        continue;
+    }
+
+    // ⚠️ PRÓXIMO A CADUCAR
+    if ($days <= 182) {
+
+        $grouped['valija_expiring'][] = [
+            'valija' => $stock->getValija(),
+            'product' => $stock->getProduct(),
+            'batch' => $batch,
+            'current' => $stock->getQuantity(),
+            'days' => $days
+        ];
+    }
+}
         return $grouped;
     }
 }

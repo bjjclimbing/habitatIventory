@@ -194,6 +194,7 @@ export default function ValijaDetail() {
     <th className="p-4 w-40 text-left">SKU</th>
     <th className="p-4 text-left">Producto</th>
     <th className="w-32 text-center">Stock mínimo</th>
+    <th className="p-4 w-32 text-left">Vencimiento</th>
     <th className="w-24 text-center">Acciones</th>
   </tr>
 </thead>
@@ -230,7 +231,11 @@ export default function ValijaDetail() {
                     className="w-20 text-center border rounded-lg px-2 py-1"
                   />
                 </td>
-
+                <td className="p-4 text-gray-700">
+  {vp.product.nextExpirationDate
+    ? new Date(vp.product.nextExpirationDate).toLocaleDateString("es-ES")
+    : "-"}
+</td>
                 <td className="text-center">
                   <button
                     onClick={() => deleteProduct(vp.id)}

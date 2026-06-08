@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 export default function Layout({ children }) {
   const { user } = useAuth();
-const isAdmin = user?.roles?.includes("ROLE_ADMIN");
+  const isAdmin = user?.roles?.includes("ROLE_ADMIN");
   const { logout } = useAuth();
 
   // =========================
@@ -16,6 +16,8 @@ const isAdmin = user?.roles?.includes("ROLE_ADMIN");
     expired: false,
     valija_low: false,
     valija_critical: false,
+    valija_expiring: false,
+    valija_expired: false,
   });
 
   const loadAlerts = async () => {
@@ -26,6 +28,8 @@ const isAdmin = user?.roles?.includes("ROLE_ADMIN");
         "expired",
         "valija_low",
         "valija_critical",
+        "valija_expiring",
+        "valija_expired",
       ];
 
       const results = await Promise.all(
@@ -64,11 +68,10 @@ const isAdmin = user?.roles?.includes("ROLE_ADMIN");
   // =========================
   const navClass = ({ isActive }) =>
     `flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium transition
-     ${
-       isActive
-         ? "bg-blue-600 text-white shadow"
-         : "text-gray-600 hover:bg-gray-100"
-     }`;
+     ${isActive
+      ? "bg-blue-600 text-white shadow"
+      : "text-gray-600 hover:bg-gray-100"
+    }`;
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -99,31 +102,31 @@ const isAdmin = user?.roles?.includes("ROLE_ADMIN");
             <span>🧳 Maletas</span>
           </NavLink>
           {isAdmin && (
-          <NavLink to="/budgets" className={navClass}>
-  <span>🧾 Presupuestos</span>
-</NavLink>
+            <NavLink to="/budgets" className={navClass}>
+              <span>🧾 Presupuestos</span>
+            </NavLink>
           )}
-{isAdmin && (
-<NavLink to="/budgets/new" className={navClass}>
-  <span>➕ Nuevo presupuesto</span>
-</NavLink>
-)}
+          {isAdmin && (
+            <NavLink to="/budgets/new" className={navClass}>
+              <span>➕ Nuevo presupuesto</span>
+            </NavLink>
+          )}
 
           <NavLink to="/dashboard" className={navClass}>
             <span>📊 Dashboard</span>
           </NavLink>
-          
+
           {isAdmin && (
-  <NavLink to="/users/new" className={navClass}>
-    <span>👤 Usuarios</span>
-  </NavLink>
-  
-)}
-{isAdmin && (
-  <NavLink to="/clients" className={navClass}>
-    <span>🏢 Clientes</span>
-  </NavLink>
-)}
+            <NavLink to="/users/new" className={navClass}>
+              <span>👤 Usuarios</span>
+            </NavLink>
+
+          )}
+          {isAdmin && (
+            <NavLink to="/clients" className={navClass}>
+              <span>🏢 Clientes</span>
+            </NavLink>
+          )}
         </nav>
 
         {/* =========================
@@ -137,14 +140,7 @@ const isAdmin = user?.roles?.includes("ROLE_ADMIN");
 
           <div className="flex flex-col gap-1">
 
-            {alerts.valija_critical && (
-              <Link
-                to="/alerts?type=valija_critical"
-                className="px-3 py-2 rounded-lg text-sm bg-purple-50 text-purple-700 font-medium"
-              >
-                🔥 Maletas críticas
-              </Link>
-            )}
+            
 
             {alerts.low_stock && (
               <Link
@@ -155,14 +151,7 @@ const isAdmin = user?.roles?.includes("ROLE_ADMIN");
               </Link>
             )}
 
-            {alerts.valija_low && (
-              <Link
-                to="/alerts?type=valija_low"
-                className="px-3 py-2 rounded-lg text-sm bg-orange-50 text-orange-700 font-medium"
-              >
-                📦 Maletas bajo stock
-              </Link>
-            )}
+            
 
             {alerts.warning && (
               <Link
@@ -178,7 +167,40 @@ const isAdmin = user?.roles?.includes("ROLE_ADMIN");
                 to="/alerts?type=expired"
                 className="px-3 py-2 rounded-lg text-sm bg-gray-100 text-gray-700 font-medium"
               >
-                ❌ Caducados
+                ⏳ Productos expirados
+              </Link>
+            )}
+            {alerts.valija_critical && (
+              <Link
+                to="/alerts?type=valija_critical"
+                className="px-3 py-2 rounded-lg text-sm bg-purple-50 text-purple-700 font-medium"
+              >
+                🔥 Maletas sin stock 
+              </Link>
+            )}
+            {alerts.valija_low && (
+              <Link
+                to="/alerts?type=valija_low"
+                className="px-3 py-2 rounded-lg text-sm bg-orange-50 text-orange-700 font-medium"
+              >
+                📦 Maletas bajo stock
+              </Link>
+            )}
+            {alerts.valija_expired && (
+              <Link
+                to="/alerts?type=valija_expired"
+                className="px-3 py-2 rounded-lg text-sm bg-red-100 text-red-800 font-medium"
+              >
+                ☠️ Maletas con productos expirados
+              </Link>
+            )}
+
+            {alerts.valija_expiring && (
+              <Link
+                to="/alerts?type=valija_expiring"
+                className="px-3 py-2 rounded-lg text-sm bg-yellow-50 text-yellow-700 font-medium"
+              >
+                ⏳ Maletas con productos próximos a expirar
               </Link>
             )}
 

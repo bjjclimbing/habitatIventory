@@ -2,25 +2,42 @@
 
 namespace App\Service;
 
+use App\Service\AlertReportExcelGenerator;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 
 class AlertMailer
 {
     public function __construct(
-        private MailerInterface $mailer
+        private MailerInterface $mailer,
+        private AlertReportExcelGenerator $excelGenerator
     ) {}
 
     public function sendAlerts(array $grouped): void
     {
+        $excelFile = $this->excelGenerator->generate($grouped);
         $critical = $grouped['critical'] ?? [];
-        $low = $grouped['low_stock'] ?? [];
-        $warning = $grouped['warning'] ?? [];
-        $expired = $grouped['expired'] ?? [];
+$low = $grouped['low_stock'] ?? [];
+$warning = $grouped['warning'] ?? [];
+$expired = $grouped['expired'] ?? [];
 
-        if (empty($critical) && empty($low) && empty($warning) && empty($expired)) {
-            return;
-        }
+$valijaLow = $grouped['valija_low'] ?? [];
+$valijaCritical = $grouped['valija_critical'] ?? [];
+$valijaExpiring = $grouped['valija_expiring'] ?? [];
+$valijaExpired = $grouped['valija_expired'] ?? [];
+
+if (
+    empty($critical)
+    && empty($low)
+    && empty($warning)
+    && empty($expired)
+    && empty($valijaLow)
+    && empty($valijaCritical)
+    && empty($valijaExpiring)
+    && empty($valijaExpired)
+) {
+    return;
+}
 
         // ======================
         // 🧠 ORDENACIÓN
@@ -54,24 +71,47 @@ class AlertMailer
         // ======================
 
         $html .= '
-        <h3>📊 Resumen</h3>
-        <table style="width:100%;text-align:center;margin-bottom:20px;">
-            <tr>
-                <td style="background:#ffe5e5;padding:12px;border-radius:6px;">
-                    🔥<br><b>' . count($critical) . '</b><br>Críticos
-                </td>
-                <td style="background:#fff3cd;padding:12px;border-radius:6px;">
-                    ⚠️<br><b>' . count($low) . '</b><br>Bajo stock
-                </td>
-                <td style="background:#e7f3ff;padding:12px;border-radius:6px;">
-                    ⏳<br><b>' . count($warning) . '</b><br>Por caducar
-                </td>
-                <td style="background:#f8d7da;padding:12px;border-radius:6px;">
-                    ❌<br><b>' . count($expired) . '</b><br>Caducados
-                </td>
-            </tr>
-        </table>
-        ';
+<h3>📊 Resumen</h3>
+
+<table style="width:100%;text-align:center;margin-bottom:20px;">
+<tr>
+    <td style="background:#ffe5e5;padding:12px;">
+        🔥<br><b>'.count($critical).'</b><br>Críticos
+    </td>
+
+    <td style="background:#fff3cd;padding:12px;">
+        ⚠️<br><b>'.count($low).'</b><br>Bajo stock
+    </td>
+
+    <td style="background:#e7f3ff;padding:12px;">
+        ⏳<br><b>'.count($warning).'</b><br>Por caducar
+    </td>
+
+    <td style="background:#f8d7da;padding:12px;">
+        ❌<br><b>'.count($expired).'</b><br>Caducados
+    </td>
+</tr>
+
+<tr>
+    <td style="background:#f3e8ff;padding:12px;">
+        🧳<br><b>'.count($valijaLow).'</b><br>Maletas bajo stock
+    </td>
+
+    <td style="background:#fde68a;padding:12px;">
+        🔥<br><b>'.count($valijaCritical).'</b><br>Maletas críticas
+    </td>
+
+    <td style="background:#dbeafe;padding:12px;">
+        ⏳<br><b>'.count($valijaExpiring).'</b><br>Maletas por caducar
+    </td>
+
+    <td style="background:#fecaca;padding:12px;">
+        ☠️<br><b>'.count($valijaExpired).'</b><br>Maletas caducadas
+    </td>
+</tr>
+
+</table>
+';
 
         // ======================
         // 🔥 CRÍTICOS
@@ -134,6 +174,60 @@ class AlertMailer
 
             $html .= '</table>';
         }
+        if (!empty($valijaExpiring)) {
+
+            $html .= '<h3 style="color:#2563eb;">⏳ Productos próximos a caducar en maletas ('.count($valijaExpiring).')</h3>';
+        
+            $html .= '
+            <table style="width:100%;font-size:13px;">
+                <tr>
+                    <th>Maleta</th>
+                    <th>SKU</th>
+                    <th>Producto</th>
+                    <th>Vencimiento</th>
+                    <th>Días</th>
+                </tr>';
+        
+            foreach ($valijaExpiring as $item) {
+        
+                $html .= '
+                <tr>
+                    <td>'.$item['valija']->getName().'</td>
+                    <td>'.$item['product']->getSku().'</td>
+                    <td>'.$item['product']->getName().'</td>
+                    <td>'.$item['batch']->getExpirationDate()?->format('Y-m-d').'</td>
+                    <td>'.($item['days'] ?? '').'</td>
+                </tr>';
+            }
+        
+            $html .= '</table>';
+        }
+        if (!empty($valijaExpired)) {
+
+            $html .= '<h3 style="color:#b91c1c;">☠️ Productos caducados en maletas ('.count($valijaExpired).')</h3>';
+        
+            $html .= '
+            <table style="width:100%;font-size:13px;">
+                <tr>
+                    <th>Maleta</th>
+                    <th>SKU</th>
+                    <th>Producto</th>
+                    <th>Vencimiento</th>
+                </tr>';
+        
+            foreach ($valijaExpired as $item) {
+        
+                $html .= '
+                <tr>
+                    <td>'.$item['valija']->getName().'</td>
+                    <td>'.$item['product']->getSku().'</td>
+                    <td>'.$item['product']->getName().'</td>
+                    <td>'.$item['batch']->getExpirationDate()?->format('Y-m-d').'</td>
+                </tr>';
+            }
+        
+            $html .= '</table>';
+        }
 
         // ======================
         // 🧠 RECOMENDACIONES
@@ -156,10 +250,15 @@ class AlertMailer
         // ======================
 
         $email = (new Email())
-            ->from('inventariodispromed@gmail.com')
-            ->to('luis.canelon.a@gmail.com')
-            ->subject('📊 Reporte diario de inventario')
-            ->html($html);
+    ->from('inventariodispromed@gmail.com')
+    ->to('luis.canelon.a@gmail.com')
+    ->subject('📊 Reporte diario de inventario')
+    ->html($html)
+    ->attachFromPath(
+        $excelFile,
+        'reporte_alertas.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
 
         $this->mailer->send($email);
     }
